@@ -58,6 +58,10 @@ public final class Metadata {
     /// URL that serves NorthStar server announcements. The API may not be deployed yet, in
     /// which case the launcher silently skips announcements.
     public static final String NORTHSTAR_ANNOUNCEMENT_URL = "https://northstar.mingpixel.net/announcement";
+
+    /// Address of the NorthStar Minecraft server that the main page one-click join button connects
+    /// to. Written as `host` (vanilla default port 25565 applies) or `host:port`.
+    public static final String NORTHSTAR_SERVER_ADDRESS = "cod.mingpixel.net";
     public static final String MANUAL_UPDATE_URL = "https://github.com/HMCL-dev/HMCL/releases";
 
     public static final String DOCS_URL = "https://docs.hmcl.net";

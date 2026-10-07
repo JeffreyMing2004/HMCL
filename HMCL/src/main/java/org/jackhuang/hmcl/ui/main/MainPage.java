@@ -271,7 +271,14 @@ public final class MainPage extends StackPane implements DecoratorPage {
             launchButton.addEventHandler(MouseEvent.MOUSE_CLICKED, secondaryClickHandle);
             menuButton.addEventHandler(MouseEvent.MOUSE_CLICKED, secondaryClickHandle);
 
-            launchPane.getChildren().setAll(launchButton, menuButton);
+            // NorthStar:一键进入预置服务器
+            JFXButton serverButton = new JFXButton();
+            serverButton.getStyleClass().add("menu-button");
+            serverButton.setGraphic(SVG.GAMEPAD.createIcon(24));
+            serverButton.setOnAction(e -> launchServer());
+            FXUtils.installFastTooltip(serverButton, i18n("northstar.server.join", Metadata.NORTHSTAR_SERVER_ADDRESS));
+
+            launchPane.getChildren().setAll(launchButton, serverButton, menuButton);
         }
 
         getChildren().addAll(updatePane, launchPane);
@@ -317,7 +324,26 @@ public final class MainPage extends StackPane implements DecoratorPage {
         Instances.launch(repository.getSelectedInstance());
     }
 
+    /// Launches the selected instance and connects it to [Metadata.NORTHSTAR_SERVER_ADDRESS].
+    /// When no instance is selected, the latest release game is installed first.
+    private void launchServer() {
+        HMCLGameRepository repository = GameDirectoryManager.getSelectedRepository();
+        @Nullable HMCLGameInstance instance = repository.getSelectedInstance();
+        if (instance != null) {
+            Instances.launchAndJoinServer(instance, Metadata.NORTHSTAR_SERVER_ADDRESS);
+        } else {
+            launchNoGame(launcherHelper ->
+                    launcherHelper.setQuickPlayOption(new QuickPlayOption.MultiPlayer(Metadata.NORTHSTAR_SERVER_ADDRESS)));
+        }
+    }
+
     private void launchNoGame() {
+        launchNoGame(launcherHelper -> {
+        });
+    }
+
+    /// Downloads the latest suitable release game, selects it, and launches it through [injecter].
+    private void launchNoGame(Consumer<LauncherHelper> injecter) {
         DownloadProvider downloadProvider = DownloadProviders.getDownloadProvider();
 
         Holder<GameInstanceID> instanceHolder = new Holder<>();
@@ -347,7 +373,7 @@ public final class MainPage extends StackPane implements DecoratorPage {
                     if (exception == null) {
                         HMCLGameRepository repository = GameDirectoryManager.getSelectedRepository();
                         repository.setSelectedInstance(repository.getInstance(instanceHolder.value));
-                        launch();
+                        Instances.launch(repository.getSelectedInstance(), injecter);
                     } else if (!(exception instanceof CancellationException)) {
                         LOG.warning("Failed to install game", exception);
                         Controllers.dialog(StringUtils.getStackTrace(exception),

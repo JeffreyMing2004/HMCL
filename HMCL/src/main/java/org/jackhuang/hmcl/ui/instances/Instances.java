@@ -378,6 +378,13 @@ public final class Instances {
                 launcherHelper.setQuickPlayOption(new QuickPlayOption.SinglePlayer(worldFolderName)));
     }
 
+    /// Launches the given instance and connects it to [serverIP] through Minecraft's Quick Play
+    /// feature. Versions older than 1.20 do not support Quick Play and simply start normally.
+    public static void launchAndJoinServer(HMCLGameInstance gameInstance, String serverIP) {
+        launch(gameInstance, launcherHelper ->
+                launcherHelper.setQuickPlayOption(new QuickPlayOption.MultiPlayer(serverIP)));
+    }
+
     public static void generateLaunchScriptForQuickEnterWorld(HMCLGameInstance gameInstance, String worldFolderName) {
         generateLaunchScript(gameInstance, launcherHelper ->
                 launcherHelper.setQuickPlayOption(new QuickPlayOption.SinglePlayer(worldFolderName)));
