@@ -37,6 +37,7 @@ import org.jackhuang.hmcl.game.OAuthServer;
 import org.jackhuang.hmcl.task.Schedulers;
 import org.jackhuang.hmcl.util.gson.JsonUtils;
 import org.jackhuang.hmcl.util.io.JarUtils;
+import org.jackhuang.hmcl.util.io.ResponseCodeException;
 import org.jackhuang.hmcl.util.skin.InvalidSkinException;
 import org.jetbrains.annotations.Nullable;
 
@@ -508,7 +509,11 @@ public final class Accounts {
         if (exception instanceof NoCharacterException) {
             return i18n("account.failed.no_character");
         } else if (exception instanceof ServerDisconnectException) {
-            if (exception.getCause() instanceof SSLException) {
+            if (findHttpStatusCode(exception) == 429) {
+                return i18n("account.failed.rate_limited");
+            } else if (isInvalidAppRegistration(exception)) {
+                return i18n("account.failed.invalid_app_registration");
+            } else if (exception.getCause() instanceof SSLException) {
                 if (exception.getCause().getMessage() != null && exception.getCause().getMessage().contains("Remote host terminated")) {
                     return i18n("account.failed.connect_authentication_server");
                 }
@@ -578,5 +583,30 @@ public final class Accounts {
         } else {
             return exception.getClass().getName() + ": " + exception.getLocalizedMessage();
         }
+    }
+
+    /// Returns the HTTP status code carried by the first {@link ResponseCodeException} in the
+    /// exception chain, or {@code -1} if the chain contains no such exception.
+    private static int findHttpStatusCode(Throwable exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ResponseCodeException) {
+                return ((ResponseCodeException) cause).getResponseCode();
+            }
+        }
+        return -1;
+    }
+
+    /// Returns whether the exception chain contains a 403 response from Minecraft services
+    /// indicating that the Microsoft OAuth client ID in use is not registered with Mojang.
+    private static boolean isInvalidAppRegistration(Throwable exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ResponseCodeException
+                    && ((ResponseCodeException) cause).getResponseCode() == 403
+                    && cause.getMessage() != null
+                    && cause.getMessage().contains("Invalid app registration")) {
+                return true;
+            }
+        }
+        return false;
     }
 }

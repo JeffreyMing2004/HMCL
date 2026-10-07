@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.jackhuang.hmcl.util.Lang.mapOf;
@@ -257,13 +258,30 @@ public abstract class HttpRequest {
         return DELETE(NetworkUtils.withQuery(url, mapOf(query)));
     }
 
+    /// Retries the supplier with exponential backoff.
+    /// <p>
+    /// Rate-limited responses (HTTP 429) wait for a progressively longer cool-down before the next
+    /// attempt, because retrying them immediately only keeps the server-side limit active. Other
+    /// failures wait for a short fixed delay, and deterministic client errors (4xx except 429) are
+    /// not retried at all, since repeating them cannot succeed and only adds more rejected requests.
     private static String getStringWithRetry(ExceptionalSupplier<String, IOException> supplier, int retryTimes) throws IOException {
         Throwable exception = null;
         for (int i = 0; i < retryTimes; i++) {
+            if (exception != null) {
+                try {
+                    Thread.sleep(backoffMillis(i, exception));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
             try {
                 return supplier.get();
             } catch (Throwable e) {
                 exception = e;
+                if (isDeterministicFailure(e)) {
+                    break;
+                }
             }
         }
         if (exception != null) {
@@ -274,5 +292,25 @@ public abstract class HttpRequest {
             }
         }
         throw new IOException("retry 0");
+    }
+
+    /// Returns whether the request failed with an HTTP client error (4xx except 429) whose outcome
+    /// does not depend on timing, so that retrying it is pointless.
+    private static boolean isDeterministicFailure(Throwable exception) {
+        return exception instanceof ResponseCodeException
+                && ((ResponseCodeException) exception).getResponseCode() / 100 == 4
+                && ((ResponseCodeException) exception).getResponseCode() != 429;
+    }
+
+    /// Returns the cool-down in milliseconds before the next retry attempt: an exponential backoff
+    /// with jitter for rate-limited responses, or a short fixed delay for any other failure.
+    /// <p>
+    /// {@code failedAttempts} is the number of failed attempts already made (1-based in effect:
+    /// the wait after the first failure uses the smallest backoff).
+    private static long backoffMillis(int failedAttempts, Throwable exception) {
+        if (exception instanceof ResponseCodeException && ((ResponseCodeException) exception).getResponseCode() == 429) {
+            return Math.min(15000, 2000L << Math.min(failedAttempts - 1, 3)) + ThreadLocalRandom.current().nextLong(1000);
+        }
+        return 1000;
     }
 }
