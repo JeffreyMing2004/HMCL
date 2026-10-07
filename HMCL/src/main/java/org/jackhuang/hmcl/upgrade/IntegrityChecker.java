@@ -45,7 +45,8 @@ import static org.jackhuang.hmcl.util.logging.Logger.LOG;
 public final class IntegrityChecker {
     private IntegrityChecker() {}
 
-    public static final boolean DISABLE_SELF_INTEGRITY_CHECK = "true".equals(System.getProperty("hmcl.self_integrity_check.disable"));
+    // NorthStar 构建不带 HMCL 官方签名，自更新改为信任更新服务器下发 jar 的 SHA-1 校验
+    public static final boolean DISABLE_SELF_INTEGRITY_CHECK = true;
 
     private static final String SIGNATURE_FILE = "META-INF/hmcl_signature";
     private static final String PUBLIC_KEY_FILE = "assets/hmcl_signature_publickey.der";

@@ -52,10 +52,11 @@ public final class AboutPage extends SpinnerPane {
 
         ComponentList about = new ComponentList();
         {
-            var launcher = LineButton.createExternalLinkButton(Metadata.PUBLISH_URL);
+            // TODO: 换成 NorthStar 官网地址
+            var launcher = LineButton.createExternalLinkButton("https://github.com/JeffreyMing2004/HMCL");
             launcher.setLargeTitle(true);
             launcher.setLeading(FXUtils.newBuiltinImage("/assets/img/icon.png"));
-            launcher.setTitle("Hello Minecraft! Launcher");
+            launcher.setTitle("NorthStar Client");
             launcher.setSubtitle(Metadata.VERSION);
 
             var author = LineButton.createExternalLinkButton("https://space.bilibili.com/1445341");
