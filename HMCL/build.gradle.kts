@@ -30,7 +30,9 @@ val isOfficial = JenkinsUtils.IS_ON_CI || GitHubActionUtils.IS_ON_OFFICIAL_REPO
 val versionType = System.getenv("VERSION_TYPE") ?: if (isOfficial) "nightly" else "unofficial"
 val versionRoot = System.getenv("VERSION_ROOT") ?: projectConfig.getProperty("versionRoot") ?: "3"
 
-val microsoftAuthId = System.getenv("MICROSOFT_AUTH_ID") ?: ""
+// NorthStar:优先级 环境变量 > gradle.properties 的 microsoft.auth.id;为空时微软登录会被禁用
+val microsoftAuthId = System.getenv("MICROSOFT_AUTH_ID")
+        ?: providers.gradleProperty("microsoft.auth.id").getOrElse("")
 val curseForgeApiKey = System.getenv("CURSEFORGE_API_KEY") ?: ""
 
 val launcherExe = System.getenv("HMCL_LAUNCHER_EXE") ?: ""
