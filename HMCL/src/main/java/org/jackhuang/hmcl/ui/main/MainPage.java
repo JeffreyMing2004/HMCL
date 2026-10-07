@@ -86,8 +86,6 @@ import static org.jackhuang.hmcl.util.logging.Logger.LOG;
 
 /// Displays the launcher home controls for the currently selected game repository.
 public final class MainPage extends StackPane implements DecoratorPage {
-    private static final String ANNOUNCEMENT = "announcement";
-
     private final ReadOnlyObjectWrapper<State> state = new ReadOnlyObjectWrapper<>();
 
     private final ObjectProperty<@Nullable HMCLGameInstance> currentGame = new SimpleObjectProperty<>(this, "currentGame");
@@ -131,51 +129,14 @@ public final class MainPage extends StackPane implements DecoratorPage {
 
         setPadding(new Insets(20));
 
-        if (Metadata.isNightly() || (Metadata.isDev() && !Objects.equals(Metadata.VERSION, state().getShownTips().get(ANNOUNCEMENT)))) {
-            String title;
-            String content;
-            if (Metadata.isNightly()) {
-                title = i18n("update.channel.nightly.title");
-                content = i18n("update.channel.nightly.hint");
-            } else {
-                title = i18n("update.channel.dev.title");
-                content = i18n("update.channel.dev.hint");
-            }
-
-            VBox announcementCard = new VBox();
-
-            BorderPane titleBar = new BorderPane();
-            titleBar.getStyleClass().add("title");
-            titleBar.setLeft(new Label(title));
-
-            JFXButton btnHide = new JFXButton();
-            btnHide.setOnAction(e -> {
-                announcementPane.setContent(new StackPane(), ContainerAnimations.FADE);
-                if (Metadata.isDev()) {
-                    state().getShownTips().put(ANNOUNCEMENT, Metadata.VERSION);
-                }
-            });
-            btnHide.getStyleClass().add("announcement-close-button");
-            btnHide.setGraphic(SVG.CLOSE.createIcon(20));
-            titleBar.setRight(btnHide);
-
-            TextFlow body = FXUtils.segmentToTextFlow(content, Controllers::onHyperlinkAction);
-            body.setLineSpacing(4);
-
-            announcementCard.getChildren().setAll(titleBar, body);
-            announcementCard.setSpacing(16);
-            announcementCard.getStyleClass().addAll("card", "announcement");
-
-            VBox announcementBox = new VBox(16);
-            announcementBox.setPadding(new Insets(15));
-            announcementBox.getChildren().add(announcementCard);
-
-            announcementPane = new TransitionPane();
-            announcementPane.setContent(announcementBox, ContainerAnimations.NONE);
-
+        // NorthStar:公告从服务器 API 获取,接口未就绪时静默跳过;上游的预览版/开发版提示已移除
+        announcementPane = new TransitionPane();
+        NorthStarAnnouncements.loadAsync(card -> {
             StackPane.setMargin(announcementPane, new Insets(-15));
-            getChildren().add(announcementPane);
-        }
+            if (!getChildren().contains(announcementPane))
+                getChildren().add(announcementPane);
+            announcementPane.setContent(card, ContainerAnimations.FADE);
+        });
 
         updatePane = new StackPane();
         updatePane.setVisible(false);
