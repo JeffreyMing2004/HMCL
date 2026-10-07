@@ -59,6 +59,11 @@ public final class Metadata {
     /// which case the launcher silently skips announcements.
     public static final String NORTHSTAR_ANNOUNCEMENT_URL = "https://northstar.mingpixel.net/announcement";
 
+    /// URL that serves the NorthStar anti-cheat manifest used to configure 次元反作弊
+    /// (DimensionAntiCheat) before launching. The API may not be deployed yet, in which case
+    /// the launcher launches without anti-cheat configuration.
+    public static final String NORTHSTAR_ANTICHEAT_URL = "https://northstar.mingpixel.net/anticheat";
+
     /// Address of the NorthStar Minecraft server that the main page one-click join button connects
     /// to. Written as `host` (vanilla default port 25565 applies) or `host:port`.
     public static final String NORTHSTAR_SERVER_ADDRESS = "cod.mingpixel.net";

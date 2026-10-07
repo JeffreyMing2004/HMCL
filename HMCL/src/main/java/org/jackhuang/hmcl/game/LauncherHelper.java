@@ -210,6 +210,16 @@ public final class LauncherHelper {
                                     javaAgents.add(agent);
                                     return null;
                                 }
+                            }),
+                            NorthStarAntiCheat.prepare(gameInstance).thenAcceptAsync(config -> {
+                                if (config == null)
+                                    return;
+                                if (config.agentArgument() != null)
+                                    javaAgents.add(config.agentArgument());
+                                if (config.java() != null) {
+                                    LOG.info("Launching with the NorthStar anti-cheat bundled Java: " + config.java().getBinary());
+                                    javaVersionRef.set(config.java());
+                                }
                             })
                     );
                 }).withStage("launch.state.dependencies")
@@ -405,6 +415,8 @@ public final class LauncherHelper {
                                     );
 
                                     return;
+                                } else if (ex instanceof NorthStarAntiCheat.ConfigurationException) {
+                                    message = i18n("northstar.anticheat.failed", ex.getLocalizedMessage());
                                 } else if (ex instanceof AccessDeniedException) {
                                     message = i18n("exception.access_denied", ((AccessDeniedException) ex).getFile());
                                 } else {
