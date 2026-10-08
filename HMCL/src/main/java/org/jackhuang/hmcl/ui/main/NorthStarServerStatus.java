@@ -85,7 +85,7 @@ public final class NorthStarServerStatus {
 
     /// Builds the main page status node. It refreshes immediately, then periodically in a daemon
     /// thread; clicking the node triggers an immediate refresh as well.
-    public static Node createNode() {
+    public static Region createNode() {
         StatusNode node = new StatusNode();
 
         Thread refresher = new Thread(() -> {

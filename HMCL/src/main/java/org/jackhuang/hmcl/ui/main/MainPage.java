@@ -39,6 +39,7 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextFlow;
@@ -282,13 +283,14 @@ public final class MainPage extends StackPane implements DecoratorPage {
         }
 
         // NorthStar:主页右上角显示服务器在线状态(SRV 解析 + 状态 ping);
-        // 更新气泡出现时下移避让
-        StackPane statusPane = new StackPane(NorthStarServerStatus.createNode());
-        StackPane.setAlignment(statusPane, Pos.TOP_RIGHT);
-        StackPane.setMargin(statusPane, new Insets(9, 16, 0, 0));
-        FXUtils.onChange(showUpdateProperty(), show -> StackPane.setMargin(statusPane,
+        // 更新气泡出现时下移避让。节点锁定首选尺寸,避免被 StackPane 拉伸后居中
+        Region statusNode = NorthStarServerStatus.createNode();
+        statusNode.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        StackPane.setAlignment(statusNode, Pos.TOP_RIGHT);
+        StackPane.setMargin(statusNode, new Insets(9, 16, 0, 0));
+        FXUtils.onChange(showUpdateProperty(), show -> StackPane.setMargin(statusNode,
                 new Insets(Boolean.TRUE.equals(show) ? 65 : 9, 16, 0, 0)));
-        getChildren().addAll(updatePane, launchPane, statusPane);
+        getChildren().addAll(updatePane, launchPane, statusNode);
 
     }
 
