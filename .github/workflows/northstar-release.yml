@@ -1,0 +1,81 @@
+name: NorthStar Release
+
+# 打 tag v3.17.N 触发自动构建,产物发布到 GitHub Release。
+# 版本映射:tag v3.17.N ↔ 构建号 N ↔ 启动器版本 3.17.N(稳定通道)。
+# 也可在 Actions 页面手动触发,手动运行时必须填写构建号输入。
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: '构建号 N(启动器版本将为 3.17.N)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      VERSION_TYPE: stable
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Derive build number
+        run: |
+          # 手动触发用输入值;tag 触发从 tag 取:v3.17.N → N、v3.18.7 → 7(去掉 v 后最后一段)
+          if [ -n "${{ github.event.inputs.build_number }}" ]; then
+            BN="${{ github.event.inputs.build_number }}"
+          else
+            BN="${GITHUB_REF_NAME#v*.}"
+          fi
+          echo "BUILD_NUMBER=$BN" >> $GITHUB_ENV
+          echo "HMCL_VERSION=3.17.$BN" >> $GITHUB_ENV
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build
+        run: ./gradlew :HMCL:makeExecutables --no-daemon
+
+      - name: Verify artifacts
+        run: |
+          cd HMCL/build/libs
+          for f in "HMCL-$HMCL_VERSION.jar" "HMCL-$HMCL_VERSION.exe" "HMCL-$HMCL_VERSION.sh"; do
+            echo "$(cat "$f.sha256")  $f" | sha256sum -c
+          done
+
+      - name: Generate release note
+        run: |
+          cat > RELEASE_NOTE.md <<EOF
+          NorthStar Client ${{ env.HMCL_VERSION }}(稳定版)
+
+          | 文件 | SHA-256 校验码 |
+          | :--- | :--- |
+          | HMCL-${{ env.HMCL_VERSION }}.exe | \`$(cat HMCL/build/libs/HMCL-${{ env.HMCL_VERSION }}.exe.sha256)\` |
+          | HMCL-${{ env.HMCL_VERSION }}.jar | \`$(cat HMCL/build/libs/HMCL-${{ env.HMCL_VERSION }}.jar.sha256)\` |
+          | HMCL-${{ env.HMCL_VERSION }}.sh  | \`$(cat HMCL/build/libs/HMCL-${{ env.HMCL_VERSION }}.sh.sha256)\` |
+          EOF
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "HMCL/build/libs/HMCL-$HMCL_VERSION.exe" \
+            "HMCL/build/libs/HMCL-$HMCL_VERSION.exe.sha256" \
+            "HMCL/build/libs/HMCL-$HMCL_VERSION.jar" \
+            "HMCL/build/libs/HMCL-$HMCL_VERSION.jar.sha256" \
+            "HMCL/build/libs/HMCL-$HMCL_VERSION.sh" \
+            "HMCL/build/libs/HMCL-$HMCL_VERSION.sh.sha256" \
+            --title "NorthStar Client $HMCL_VERSION" \
+            --notes-file RELEASE_NOTE.md
