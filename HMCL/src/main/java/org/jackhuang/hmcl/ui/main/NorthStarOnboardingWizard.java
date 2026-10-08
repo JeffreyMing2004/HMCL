@@ -137,10 +137,11 @@ public final class NorthStarOnboardingWizard implements WizardProvider {
             getChildren().add(button);
         }
 
-        /// Adds a button advancing to the next wizard step.
+        /// Adds a button advancing to the next wizard step; the provider's [WizardProvider
+        /// .createPage] supplies the page for the next step.
         protected void addNextButton(String textKey) {
             var button = FXUtils.newRaisedButton(i18n(textKey));
-            button.setOnAction(e -> controller.onNext(this));
+            button.setOnAction(e -> controller.onNext());
             getChildren().add(button);
         }
     }
