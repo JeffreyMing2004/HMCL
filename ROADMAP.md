@@ -13,9 +13,9 @@
 
 ## P1 首个正式版发布工程
 
-- ☐ **版本号定版**:脱离 `3.17.SNAPSHOT`,确定正式版本号方案(如 `1.0.0` 或跟随上游 + northstar 后缀),`VERSION_TYPE=stable` 出包。
-- ☐ **CI 自动构建**:GitHub Actions 打 tag 触发 `:HMCL:makeExecutables`,自动发布 Release(exe / jar / sh + SHA-256 校验和),不再依赖本地打包。
-- ☐ **自更新演练**:用 CI 产物走一次真实的「旧版检测新版 → 下载 → SHA-1 校验 → 替换重启」闭环,`force` 字段验证一次强制更新。
+- ☑ **版本号定版**:采用 `3.17.N` 方案(基线跟随上游大版本,`N` 为 NorthStar 发布序号);tag `v3.17.N` ↔ 构建号 `N` ↔ 稳定通道。首个正式版 **3.17.1** 已发布。
+- ☑ **CI 自动构建**:`.github/workflows/northstar-release.yml` 推 `v*` tag(或手动触发)自动构建并发布 [GitHub Release](https://github.com/JeffreyMing2004/HMCL/releases)(exe / jar / sh + SHA-256),发布前自动校验产物。
+- ◐ **自更新演练**:普通更新闭环已验证——旧版检测新版 → 下载 → SHA-1 校验 → 替换 → 重启为新版本(本地 mock 服务器演练,脚本 `scripts/mock_update_server.py`)。待办:`force: true` 强制更新演练(启动 mock 时加 `--force` 再走一遍)。正式环境演练待 P0 自更新接口部署后进行。
 
 ## P2 玩家体验完善
 
