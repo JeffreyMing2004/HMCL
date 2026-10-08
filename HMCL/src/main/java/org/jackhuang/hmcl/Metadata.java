@@ -38,11 +38,15 @@ public final class Metadata {
     public static final String FULL_NAME = "NorthStar Client";
     public static final String VERSION = System.getProperty("hmcl.version.override", JarUtils.getAttribute("hmcl.version", "@develop@"));
 
+    /// Version line of upstream HMCL this launcher is based on, displayed next to [VERSION].
+    /// Update when merging upstream.
+    public static final String HMCL_VERSION = "3.17";
+
     /// Explicit Application User Model ID used for Windows taskbar grouping and pinning.
     public static final String WINDOWS_APP_USER_MODEL_ID = "org.jackhuang.hmcl";
 
-    public static final String TITLE = NAME + " " + VERSION;
-    public static final String FULL_TITLE = FULL_NAME + " v" + VERSION;
+    public static final String TITLE = NAME + " " + VERSION + " (HMCL " + HMCL_VERSION + ")";
+    public static final String FULL_TITLE = FULL_NAME + " v" + VERSION + " (HMCL " + HMCL_VERSION + ")";
 
     public static final int MINIMUM_REQUIRED_JAVA_VERSION = 17;
     public static final int MINIMUM_SUPPORTED_JAVA_VERSION = 17;

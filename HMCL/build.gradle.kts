@@ -9,7 +9,6 @@ import org.jackhuang.hmcl.gradle.l10n.UpsideDownTranslate
 import org.jackhuang.hmcl.gradle.mod.ParseModDataTask
 import org.jackhuang.hmcl.gradle.pack.CreateDeb
 import org.jackhuang.hmcl.gradle.pack.ReleaseType
-import org.jackhuang.hmcl.gradle.utils.PropertiesUtils
 import java.net.URI
 import java.nio.file.FileSystems
 import java.nio.file.Files
@@ -23,12 +22,9 @@ plugins {
     alias(libs.plugins.shadow)
 }
 
-val projectConfig = PropertiesUtils.load(rootProject.file("config/project.properties").toPath())
-
 val isOfficial = JenkinsUtils.IS_ON_CI || GitHubActionUtils.IS_ON_OFFICIAL_REPO
 
 val versionType = System.getenv("VERSION_TYPE") ?: if (isOfficial) "nightly" else "unofficial"
-val versionRoot = System.getenv("VERSION_ROOT") ?: projectConfig.getProperty("versionRoot") ?: "3"
 
 // NorthStar:优先级 环境变量 > gradle.properties 的 microsoft.auth.id > 仓库默认值。
 // 默认值为 NorthStar 自己的 Azure 应用 Client ID(已加入 Mojang 接口白名单;公共客户端 ID
@@ -39,23 +35,11 @@ val curseForgeApiKey = System.getenv("CURSEFORGE_API_KEY") ?: ""
 
 val launcherExe = System.getenv("HMCL_LAUNCHER_EXE") ?: ""
 
-val buildNumber = System.getenv("BUILD_NUMBER")?.toInt()
-if (buildNumber != null) {
-    version = if (JenkinsUtils.IS_ON_CI && versionType == "dev") {
-        "$versionRoot.0.$buildNumber"
-    } else {
-        "$versionRoot.$buildNumber"
-    }
-} else {
-    val shortCommit = System.getenv("GITHUB_SHA")?.lowercase()?.substring(0, 7)
-    version = if (shortCommit.isNullOrBlank()) {
-        "$versionRoot.SNAPSHOT"
-    } else if (isOfficial) {
-        "$versionRoot.dev-$shortCommit"
-    } else {
-        "$versionRoot.unofficial-$shortCommit"
-    }
-}
+// NorthStar:自主版本号,与上游 HMCL 基线(见 Metadata.HMCL_VERSION)解耦。
+// 发布版由 CI 从 tag 注入(如 tag v1.0.0 → NORTHSTAR_VERSION=1.0.0);
+// 本地/无 tag 构建默认 1.0.0-SNAPSHOT,亦可用 gradle.properties 的 northstar.version 覆盖。
+version = System.getenv("NORTHSTAR_VERSION")
+        ?: providers.gradleProperty("northstar.version").getOrElse("1.0.0-SNAPSHOT")
 
 val embedResources = configurations.register("embedResources")
 

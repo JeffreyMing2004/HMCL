@@ -13,7 +13,7 @@
 
 ## P1 首个正式版发布工程
 
-- ☑ **版本号定版**:采用 `3.17.N` 方案(基线跟随上游大版本,`N` 为 NorthStar 发布序号);tag `v3.17.N` ↔ 构建号 `N` ↔ 稳定通道。首个正式版 **3.17.1** 已发布。
+- ☑ **版本号定版**:NorthStar 采用自主版本号(首个正式版 **1.0.0**,tag `v<版本>` 决定),窗口/主页标题同时显示 HMCL 基线版本,格式 `NorthStar Client v1.0.0 (HMCL 3.17)`;合并上游后更新 `Metadata.HMCL_VERSION`。历史上的 3.17.1 为 CI 验证版。
 - ☑ **CI 自动构建**:`.github/workflows/northstar-release.yml` 推 `v*` tag(或手动触发)自动构建并发布 [GitHub Release](https://github.com/JeffreyMing2004/HMCL/releases)(exe / jar / sh + SHA-256),发布前自动校验产物。
 - ◐ **自更新演练**:普通更新闭环已验证——旧版检测新版 → 下载 → SHA-1 校验 → 替换 → 重启为新版本(本地 mock 服务器演练,脚本 `scripts/mock_update_server.py`)。待办:`force: true` 强制更新演练(启动 mock 时加 `--force` 再走一遍)。正式环境演练待 P0 自更新接口部署后进行。
 
