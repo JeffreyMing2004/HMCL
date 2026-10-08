@@ -53,6 +53,7 @@ import org.jackhuang.hmcl.ui.decorator.Decorator;
 import org.jackhuang.hmcl.ui.download.DownloadPage;
 import org.jackhuang.hmcl.ui.main.LauncherSettingsPage;
 import org.jackhuang.hmcl.ui.main.NorthStarBackgroundMusic;
+import org.jackhuang.hmcl.ui.main.NorthStarOnboardingWizard;
 import org.jackhuang.hmcl.ui.main.RootPage;
 import org.jackhuang.hmcl.ui.terracotta.TerracottaPage;
 import org.jackhuang.hmcl.ui.instances.GameListPage;
@@ -396,6 +397,11 @@ public final class Controllers {
                 SettingsManager.settings().northstarBackgroundMusicProperty().set(false);
                 NorthStarBackgroundMusic.stop();
             });
+        }
+
+        // NorthStar:首次启动引导,只出现一次
+        if (!SettingsManager.settings().northstarOnboardingFinishedProperty().get()) {
+            Platform.runLater(() -> getDecorator().startWizard(new NorthStarOnboardingWizard()));
         }
 
         tryInstallBundledModpack(GameDirectoryManager.getSelectedRepository());

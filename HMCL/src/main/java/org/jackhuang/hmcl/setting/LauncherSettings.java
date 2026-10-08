@@ -228,6 +228,16 @@ public final class LauncherSettings extends ObservableSetting implements JsonSch
         return northstarBackgroundMusic;
     }
 
+    /// Whether the NorthStar first-launch onboarding wizard has been shown. The wizard starts
+    /// whenever this flag is absent or false, and the flag is set as soon as the wizard starts.
+    @SerializedName("northstarOnboardingFinished")
+    private final BooleanProperty northstarOnboardingFinished = new SimpleBooleanProperty(false);
+
+    /// Returns the onboarding finished property.
+    public BooleanProperty northstarOnboardingFinishedProperty() {
+        return northstarOnboardingFinished;
+    }
+
     /// The common Minecraft directory selection mode.
     @SerializedName("commonDirectoryType")
     private final ObjectProperty<EnumCommonDirectory> commonDirectoryType = new RawPreservingObjectProperty<>(EnumCommonDirectory.DEFAULT);
