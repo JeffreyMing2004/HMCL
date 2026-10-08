@@ -29,11 +29,11 @@ jobs:
 
       - name: Derive build number
         run: |
-          # 手动触发用输入值;tag 触发从 tag 取:v3.17.N → N、v3.18.7 → 7(去掉 v 后最后一段)
+          # 手动触发用输入值;tag 触发从 tag 取:v3.17.N → N、v3.18.7 → 7(去掉 v 前缀与最后一段点号,取最长匹配)
           if [ -n "${{ github.event.inputs.build_number }}" ]; then
             BN="${{ github.event.inputs.build_number }}"
           else
-            BN="${GITHUB_REF_NAME#v*.}"
+            BN="${GITHUB_REF_NAME##v*.}"
           fi
           echo "BUILD_NUMBER=$BN" >> $GITHUB_ENV
           echo "HMCL_VERSION=3.17.$BN" >> $GITHUB_ENV
