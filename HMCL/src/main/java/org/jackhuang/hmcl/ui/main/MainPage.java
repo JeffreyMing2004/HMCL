@@ -281,7 +281,11 @@ public final class MainPage extends StackPane implements DecoratorPage {
             launchPane.getChildren().setAll(launchButton, serverButton, menuButton);
         }
 
-        getChildren().addAll(updatePane, launchPane);
+        // NorthStar:主页左下角显示服务器在线状态(SRV 解析 + 状态 ping)
+        StackPane statusPane = new StackPane(NorthStarServerStatus.createNode());
+        StackPane.setAlignment(statusPane, Pos.BOTTOM_LEFT);
+        StackPane.setMargin(statusPane, new Insets(0, 0, 9, 4));
+        getChildren().addAll(updatePane, launchPane, statusPane);
 
     }
 
@@ -325,8 +329,12 @@ public final class MainPage extends StackPane implements DecoratorPage {
     }
 
     /// Launches the selected instance and connects it to [Metadata.NORTHSTAR_SERVER_ADDRESS].
-    /// When no instance is selected, the latest release game is installed first.
+    /// When no instance is selected, the latest release game is installed first. Warns once when
+    /// the latest status query found the server offline.
     private void launchServer() {
+        if (Boolean.FALSE.equals(NorthStarServerStatus.isOnline())) {
+            Controllers.showToast(i18n("northstar.server.status.offline.toast"));
+        }
         HMCLGameRepository repository = GameDirectoryManager.getSelectedRepository();
         @Nullable HMCLGameInstance instance = repository.getSelectedInstance();
         if (instance != null) {
