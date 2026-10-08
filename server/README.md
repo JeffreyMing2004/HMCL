@@ -1,54 +1,48 @@
-# NorthStar 服务端静态接口部署包
+# NorthStar 服务端接口部署
 
-启动器四个接口全部以**静态 JSON 文件**实现,由 nginx 直接返回;`/update` 带查询参数请求,
-通过 `location = /update` + `try_files` 忽略参数统一返回 `update.json`。
+> **当前方案：由 northstar_backend（Spring Boot）提供四个接口**，OpenResty 反代根路径到后端。
+> 本目录的静态 JSON 与 nginx 片段是**无后端时的降级备份方案**，与反代方案二选一，不要混用。
 
-## 文件清单
+## 接口一览
 
-| 文件 | 接口 | 用途 |
+| 接口 | 反代目标 | 数据来源 |
 | --- | --- | --- |
-| `announcement.json` | `GET /announcement` | 主页公告卡 |
-| `client.json` | `GET /client` | 侧边栏「下载」的客户端整合包清单 |
-| `update.json` | `GET /update` | 启动器自更新清单 |
-| `anticheat.json` | `GET /anticheat` | 次元反作弊清单(当前 `enabled:false`,空配置静默跳过) |
-| `nginx-northstar.conf` | — | nginx location 配置片段 |
+| `GET /announcement` | 后端 `/api/launcher/announcement` | 数据库，管理后台「公告管理」页维护 |
+| `GET /client` | 后端 `/api/launcher/client` | 环境变量 `LAUNCHER_CLIENT_*` |
+| `GET /update` | 后端 `/api/launcher/update` | 环境变量 `LAUNCHER_UPDATE_*` |
+| `GET /anticheat` | 后端 `/api/launcher/anticheat` | 数据库，管理后台「启动器」页维护 |
 
-## 部署步骤(nginx)
+反代配置：northstar_frontend 仓库 `deploy/openresty/northstar.mingpixel.net.conf`
+（`/announcement` 与 `/update` 两个 location 为本次新增，`/client`、`/anticheat` 已有）。
 
-1. 把四个 JSON 上传到站点根目录(与 `northstar.mingpixel.net` 现有站点同一 root),
-   例如 `/var/www/northstar/`:
-   ```bash
-   scp server/*.json user@server:/var/www/northstar/
-   ```
-2. 把 `nginx-northstar.conf` 里的 `location` 块合并进 `northstar.mingpixel.net` 的 server 块:
-   ```bash
-   scp server/nginx-northstar.conf user@server:/etc/nginx/snippets/northstar-api.conf
-   # 在 server 块内 include /etc/nginx/snippets/northstar-api.conf;
-   nginx -t && systemctl reload nginx
-   ```
-3. 验证(本机或任意机器):
+## 部署步骤
+
+1. 后端配置（`.env` / 环境变量）：
+   - 整合包：`LAUNCHER_CLIENT_VERSION` / `LAUNCHER_CLIENT_URL` / `LAUNCHER_CLIENT_SHA1`
+     （zip 上传到服务器 `/downloads/` 静态目录，URL 填公网直链）；
+   - 自更新：`LAUNCHER_UPDATE_VERSION` / `LAUNCHER_UPDATE_JAR` / `LAUNCHER_UPDATE_JARSHA1` /
+     `LAUNCHER_UPDATE_FORCE`（当前已按 v1.0.0 Release 实测值填好模板，见 `.env.example`；
+     jar 指向 GitHub Release，国内慢可镜像到 `/downloads/` 后改 URL）；
+   - 改完重启后端生效（启动器清单为启动时读取）。
+2. OpenResty：更新 `northstar.mingpixel.net.conf`（加入新 location）后 reload。
+3. 验证：
    ```bash
    curl -s "https://northstar.mingpixel.net/announcement"
    curl -s "https://northstar.mingpixel.net/client"
    curl -s "https://northstar.mingpixel.net/update?version=1.0.0&channel=stable"
    curl -s "https://northstar.mingpixel.net/anticheat"
    ```
+4. 公告发布：管理后台 → 公告管理 → 新建/编辑/删除，发布后启动器最迟 1 分钟生效。
 
-## 发新版本流程
+## 待补内容
 
-1. `git tag v1.0.1 && git push origin v1.0.1` → CI 自动构建并发布 Release。
-2. 下载 Release 里的 `HMCL-1.0.1.jar`,算出 SHA-1:
-   `sha1sum HMCL-1.0.1.jar`
-3. 修改 `update.json`:`version` 改为 `1.0.1`,`jar` 指向新 jar 直链(建议同时镜像一份到
-   `northstar.mingpixel.net/download/`,国内玩家下载更快),`jarsha1` 填新值;`force: true`
-   可强制玩家升级。上传覆盖服务器上的 `update.json` 即完成推送,存量客户端下次启动收到提示。
+- 整合包 zip 上传到 `/downloads/` 后，把 `LAUNCHER_CLIENT_*` 三项配齐（未配置前玩家点
+  「下载」提示"暂无可用的客户端"，属预期降级）。
+- DAC 反作弊组件就绪后，在管理后台「启动器」页启用并填写组件清单。
+- 公告内容日常更新直接在管理后台操作，无需动服务器。
 
-## 待补内容(部署后仍需人工提供)
+## 备份方案（静态 JSON，无后端时使用）
 
-- `client.json` 的 `url` 指向 `northstar-client-1.0.0.zip`——**整合包 zip 尚未上传**,
-  上传前玩家点「下载」会提示"暂无可用的客户端"(预期降级,不报错)。
-- `anticheat.json` 当前 `enabled:false`;DAC 组件就绪后按客户端
-  `NorthStarAntiCheat` 的清单格式填入 `files`(target: `MODS`/`GAME`)、
-  `agentFile`、`javaDirectory`,再改为 `true`。
-- 公告内容更新直接改 `announcement.json`(`title`/`content` 必填,`content` 支持
-  `<a href>` 链接,`date` 可选)。
+`announcement.json` / `client.json` / `update.json` / `anticheat.json` +
+`nginx-northstar.conf`（`location =` + `try_files`）。注意静态方案的
+`update.json`/`anticheat.json` 需要手工维护，与后端方案的管理后台互不相通。
