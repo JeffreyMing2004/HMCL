@@ -281,10 +281,13 @@ public final class MainPage extends StackPane implements DecoratorPage {
             launchPane.getChildren().setAll(launchButton, serverButton, menuButton);
         }
 
-        // NorthStar:主页左下角显示服务器在线状态(SRV 解析 + 状态 ping)
+        // NorthStar:主页右上角显示服务器在线状态(SRV 解析 + 状态 ping);
+        // 更新气泡出现时下移避让
         StackPane statusPane = new StackPane(NorthStarServerStatus.createNode());
-        StackPane.setAlignment(statusPane, Pos.BOTTOM_LEFT);
-        StackPane.setMargin(statusPane, new Insets(0, 0, 9, 4));
+        StackPane.setAlignment(statusPane, Pos.TOP_RIGHT);
+        StackPane.setMargin(statusPane, new Insets(9, 16, 0, 0));
+        FXUtils.onChange(showUpdateProperty(), show -> StackPane.setMargin(statusPane,
+                new Insets(Boolean.TRUE.equals(show) ? 65 : 9, 16, 0, 0)));
         getChildren().addAll(updatePane, launchPane, statusPane);
 
     }
