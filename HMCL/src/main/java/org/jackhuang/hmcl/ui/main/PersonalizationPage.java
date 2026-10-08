@@ -891,6 +891,38 @@ public class PersonalizationPage extends StackPane {
                 }
             });
 
+            // NorthStar:背景音乐音量滑条,拖动即时生效
+            HBox musicVolumeBox = new HBox(8);
+            musicVolumeBox.setAlignment(Pos.CENTER);
+
+            Label musicVolumeTitle = new Label(i18n("northstar.music.volume"));
+            musicVolumeTitle.setPadding(new Insets(9, 0, 0, 0));
+
+            JFXSlider musicVolumeSlider = new JFXSlider(0, 100,
+                    settings().northstarMusicVolumeProperty().get() * 100);
+            musicVolumeSlider.setPrefWidth(220);
+            musicVolumeSlider.setShowTickMarks(true);
+            musicVolumeSlider.setMajorTickUnit(10);
+            musicVolumeSlider.setMinorTickCount(1);
+            musicVolumeSlider.setBlockIncrement(5);
+            musicVolumeSlider.setSnapToTicks(true);
+            HBox.setHgrow(musicVolumeSlider, Priority.ALWAYS);
+
+            Label musicVolumeText = new Label();
+            FXUtils.setLimitWidth(musicVolumeText, 50);
+            musicVolumeText.setAlignment(Pos.CENTER);
+            StringBinding musicVolumeBinding = Bindings.createStringBinding(
+                    () -> ((int) musicVolumeSlider.getValue()) + "%", musicVolumeSlider.valueProperty());
+            musicVolumeText.textProperty().bind(musicVolumeBinding);
+            musicVolumeSlider.setValueFactory(s -> musicVolumeBinding);
+
+            musicVolumeSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+                settings().northstarMusicVolumeProperty().set(newValue.doubleValue() / 100);
+                NorthStarBackgroundMusic.applyVolume();
+            });
+
+            musicVolumeBox.getChildren().setAll(musicVolumeTitle, musicVolumeSlider, musicVolumeText);
+
             ComponentSublist backgroundFallbackSublist = new ComponentSublist();
             backgroundFallbackSublist.setTitle(i18n("launcher.background.fallback"));
             backgroundFallbackSublist.setHasSubtitle(true);
@@ -1083,6 +1115,7 @@ public class PersonalizationPage extends StackPane {
             backgroundLoadingList.getContent().setAll(
                     networkBackgroundCacheButton,
                     backgroundMusicButton,
+                    musicVolumeBox,
                     backgroundFallbackSublist,
                     backgroundLoadPolicyButton
             );

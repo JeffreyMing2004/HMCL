@@ -238,6 +238,16 @@ public final class LauncherSettings extends ObservableSetting implements JsonSch
         return northstarOnboardingFinished;
     }
 
+    /// NorthStar background music loudness as a linear factor in the range `[0, 1]`, where `0` is
+    /// silent and `1` plays at full volume. The default matches the original fixed -12 dB level.
+    @SerializedName("northstarMusicVolume")
+    private final DoubleProperty northstarMusicVolume = new SimpleDoubleProperty(0.25);
+
+    /// Returns the NorthStar background music volume property.
+    public DoubleProperty northstarMusicVolumeProperty() {
+        return northstarMusicVolume;
+    }
+
     /// The common Minecraft directory selection mode.
     @SerializedName("commonDirectoryType")
     private final ObjectProperty<EnumCommonDirectory> commonDirectoryType = new RawPreservingObjectProperty<>(EnumCommonDirectory.DEFAULT);

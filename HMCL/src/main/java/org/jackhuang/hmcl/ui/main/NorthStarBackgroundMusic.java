@@ -20,6 +20,7 @@ package org.jackhuang.hmcl.ui.main;
 import org.jackhuang.hmcl.Metadata;
 import org.jackhuang.hmcl.setting.SettingsManager;
 import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -47,13 +48,15 @@ import static org.jackhuang.hmcl.util.logging.Logger.LOG;
 public final class NorthStarBackgroundMusic {
     private static final String RESOURCE = "/assets/audio/background.ogg";
     private static final String CACHE_FILE_NAME = "background.ogg";
-    private static final float VOLUME_GAIN_DB = -12.0f;
 
     /// Guards interruptions of the wait between track restarts.
     private static final Object LOCK = new Object();
 
     /// Whether music playback is currently desired; cleared by [stop].
     private static volatile boolean running = false;
+
+    /// The line currently streaming audio, or `null` between tracks; used by [applyVolume].
+    private static volatile @Nullable SourceDataLine currentLine;
 
     private NorthStarBackgroundMusic() {
     }
@@ -76,6 +79,16 @@ public final class NorthStarBackgroundMusic {
         running = false;
         synchronized (LOCK) {
             LOCK.notifyAll();
+        }
+    }
+
+    /// Applies the configured volume ([SettingsManager] `northstarMusicVolume`, a linear factor
+    /// in `[0, 1]`) to the playing line, if any. Called when the volume slider changes so the
+    /// adjustment is heard immediately, not just on the next track restart.
+    public static void applyVolume() {
+        @Nullable SourceDataLine line = currentLine;
+        if (line != null) {
+            setVolume(line);
         }
     }
 
@@ -121,6 +134,7 @@ public final class NorthStarBackgroundMusic {
                 line.open(in.getFormat(), 1 << 16);
                 setVolume(line);
                 line.start();
+                currentLine = line;
 
                 byte[] buffer = new byte[1 << 16];
                 int read;
@@ -133,18 +147,24 @@ public final class NorthStarBackgroundMusic {
             LOG.warning("Failed to play background music", e);
             running = false;
         } finally {
+            currentLine = null;
             if (line != null) {
                 line.close();
             }
         }
     }
 
-    /// Attenuates the line so the track stays in the background.
+    /// Applies the configured linear volume (`0` silent, `1` full volume) to the line, converted
+    /// to decibels and clamped to the mixer's supported gain range.
     private static void setVolume(SourceDataLine line) {
-        if (line.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-            FloatControl gain = (FloatControl) line.getControl(FloatControl.Type.MASTER_GAIN);
-            gain.setValue(Math.max(gain.getMinimum(), VOLUME_GAIN_DB));
+        if (!line.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+            return;
         }
+        double linear = Math.min(1.0, Math.max(0.0,
+                SettingsManager.settings().northstarMusicVolumeProperty().get()));
+        FloatControl gain = (FloatControl) line.getControl(FloatControl.Type.MASTER_GAIN);
+        float decibel = linear > 0 ? (float) (20.0 * Math.log10(linear)) : gain.getMinimum();
+        gain.setValue(Math.max(gain.getMinimum(), Math.min(0.0f, decibel)));
     }
 
     /// Copies the bundled track next to the launcher data directory once and returns its path,
