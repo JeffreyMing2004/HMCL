@@ -375,6 +375,16 @@ public final class Decorator {
         snackbar.fireEvent(new JFXSnackbar.SnackbarEvent(new JFXSnackbarLayout(content)));
     }
 
+    /// Shows a transient message with one action button at the bottom center of the main window.
+    ///
+    /// @param content    the message to show
+    /// @param actionText the action button text, or `null` for no button
+    /// @param action     the action invoked when the button is clicked, or `null` for no action
+    public void showToast(String content, @Nullable String actionText, @Nullable Runnable action) {
+        snackbar.fireEvent(new JFXSnackbar.SnackbarEvent(new JFXSnackbarLayout(content, actionText,
+                action != null ? event -> action.run() : null)));
+    }
+
     /// Starts a wizard without an explicit category title.
     ///
     /// @param wizardProvider the wizard provider to start

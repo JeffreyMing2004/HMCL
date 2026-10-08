@@ -219,6 +219,15 @@ public final class LauncherSettings extends ObservableSetting implements JsonSch
         return disableAprilFools;
     }
 
+    /// Whether NorthStar background music plays when the launcher starts.
+    @SerializedName("northstarBackgroundMusic")
+    private final BooleanProperty northstarBackgroundMusic = new SimpleBooleanProperty(true);
+
+    /// Returns the NorthStar background music property.
+    public BooleanProperty northstarBackgroundMusicProperty() {
+        return northstarBackgroundMusic;
+    }
+
     /// The common Minecraft directory selection mode.
     @SerializedName("commonDirectoryType")
     private final ObjectProperty<EnumCommonDirectory> commonDirectoryType = new RawPreservingObjectProperty<>(EnumCommonDirectory.DEFAULT);

@@ -878,6 +878,19 @@ public class PersonalizationPage extends StackPane {
                             newValue,
                             NetworkBackgroundImageCachePolicy.ENABLED) == NetworkBackgroundImageCachePolicy.ENABLED));
 
+            // NorthStar:背景音乐开关
+            LineToggleButton backgroundMusicButton = new LineToggleButton();
+            backgroundMusicButton.setTitle(i18n("northstar.music"));
+            backgroundMusicButton.setSelected(settings().northstarBackgroundMusicProperty().get());
+            backgroundMusicButton.selectedProperty().addListener((observable, oldValue, newValue) -> {
+                settings().northstarBackgroundMusicProperty().set(Boolean.TRUE.equals(newValue));
+                if (Boolean.TRUE.equals(newValue)) {
+                    NorthStarBackgroundMusic.startIfEnabled();
+                } else {
+                    NorthStarBackgroundMusic.stop();
+                }
+            });
+
             ComponentSublist backgroundFallbackSublist = new ComponentSublist();
             backgroundFallbackSublist.setTitle(i18n("launcher.background.fallback"));
             backgroundFallbackSublist.setHasSubtitle(true);
@@ -1069,6 +1082,7 @@ public class PersonalizationPage extends StackPane {
                     opacityPane);
             backgroundLoadingList.getContent().setAll(
                     networkBackgroundCacheButton,
+                    backgroundMusicButton,
                     backgroundFallbackSublist,
                     backgroundLoadPolicyButton
             );

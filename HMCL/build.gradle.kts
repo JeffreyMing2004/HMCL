@@ -47,6 +47,7 @@ dependencies {
     implementation(project(":HMCLCore"))
     implementation(project(":HMCLBoot"))
     implementation("libs:JFoenix")
+    implementation(libs.vorbisspi)
     implementation(libs.jwebp)
     implementation(libs.fxsvgimage)
     implementation(libs.java.info)
@@ -197,6 +198,7 @@ tasks.shadowJar {
         exclude(dependency("com.google.code.gson:.*:.*"))
         exclude(dependency("net.java.dev.jna:jna:.*"))
         exclude(dependency("libs:JFoenix:.*"))
+        exclude(dependency("com.googlecode.soundlibs:.*:.*")) // NorthStar:背景音乐解码器经 SPI 反射加载,防裁剪
         exclude(project(":HMCLBoot"))
     }
 

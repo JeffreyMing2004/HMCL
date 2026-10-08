@@ -12,6 +12,7 @@ fx-gson = "5.0.0"
 constant-pool-scanner = "1.2"
 hello-nbt = "0.4.0"
 nanohttpd = "2.3.1"
+vorbisspi = "1.0.3-1"
 jsoup = "1.23.2"
 fxsvgimage = "1.9.1"
 jna = "5.18.1"
@@ -50,6 +51,7 @@ fx-gson = { module = "org.hildan.fxgson:fx-gson", version.ref = "fx-gson" }
 constant-pool-scanner = { module = "org.jenkins-ci:constant-pool-scanner", version.ref = "constant-pool-scanner" }
 hello-nbt = { module = "org.glavo:HelloNBT", version.ref = "hello-nbt" }
 nanohttpd = { module = "org.nanohttpd:nanohttpd", version.ref = "nanohttpd" }
+vorbisspi = { module = "com.googlecode.soundlibs:vorbisspi", version.ref = "vorbisspi" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 fxsvgimage = { module = "com.github.hervegirod:fxsvgimage", version.ref = "fxsvgimage" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }

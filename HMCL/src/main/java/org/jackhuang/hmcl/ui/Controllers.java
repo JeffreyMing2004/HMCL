@@ -52,6 +52,7 @@ import org.jackhuang.hmcl.ui.construct.MessageDialogPane.MessageType;
 import org.jackhuang.hmcl.ui.decorator.Decorator;
 import org.jackhuang.hmcl.ui.download.DownloadPage;
 import org.jackhuang.hmcl.ui.main.LauncherSettingsPage;
+import org.jackhuang.hmcl.ui.main.NorthStarBackgroundMusic;
 import org.jackhuang.hmcl.ui.main.RootPage;
 import org.jackhuang.hmcl.ui.terracotta.TerracottaPage;
 import org.jackhuang.hmcl.ui.instances.GameListPage;
@@ -388,6 +389,15 @@ public final class Controllers {
                     }, updateShowTips);
         }
 
+        // NorthStar:背景音乐在每次启动播放时提醒用户可以关闭
+        if (SettingsManager.settings().northstarBackgroundMusicProperty().get()) {
+            NorthStarBackgroundMusic.startIfEnabled();
+            showToast(i18n("northstar.music.tip"), i18n("northstar.music.disable"), () -> {
+                SettingsManager.settings().northstarBackgroundMusicProperty().set(false);
+                NorthStarBackgroundMusic.stop();
+            });
+        }
+
         tryInstallBundledModpack(GameDirectoryManager.getSelectedRepository());
     }
 
@@ -563,6 +573,15 @@ public final class Controllers {
 
     public static void showToast(String content) {
         decorator.showToast(content);
+    }
+
+    /// Shows a transient message with one action button at the bottom center of the main window.
+    ///
+    /// @param content    the message to show
+    /// @param actionText the action button text, or `null` for no button
+    /// @param action     the action invoked when the button is clicked, or `null` for no action
+    public static void showToast(String content, @Nullable String actionText, @Nullable Runnable action) {
+        decorator.showToast(content, actionText, action);
     }
 
     /// Shows `directoryChooser` with the current main window as its owner.
