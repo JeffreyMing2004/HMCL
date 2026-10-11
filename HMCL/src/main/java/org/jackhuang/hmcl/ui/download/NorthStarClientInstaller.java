@@ -21,6 +21,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import org.jackhuang.hmcl.Metadata;
+import org.jackhuang.hmcl.game.HMCLGameRepository;
+import org.jackhuang.hmcl.game.GameInstanceID;
+import org.jackhuang.hmcl.game.ModpackHelper;
+import org.jackhuang.hmcl.game.NoSuchGameInstanceException;
+import org.jackhuang.hmcl.modpack.Modpack;
 import org.jackhuang.hmcl.setting.GameDirectoryManager;
 import org.jackhuang.hmcl.task.FileDownloadTask;
 import org.jackhuang.hmcl.task.Schedulers;
@@ -28,13 +33,16 @@ import org.jackhuang.hmcl.task.Task;
 import org.jackhuang.hmcl.ui.Controllers;
 import org.jackhuang.hmcl.util.TaskCancellationAction;
 import org.jackhuang.hmcl.util.gson.JsonUtils;
+import org.jackhuang.hmcl.util.io.CompressingUtils;
 import org.jackhuang.hmcl.util.io.NetworkUtils;
 import org.jetbrains.annotations.NotNullByDefault;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
 
@@ -60,28 +68,64 @@ public final class NorthStarClientInstaller {
     private NorthStarClientInstaller() {
     }
 
-    /// Fetches the client manifest, downloads the modpack while showing a progress dialog,
-    /// and opens the modpack installation wizard on success.
+    /// Fetches the client manifest, downloads the modpack while showing a progress dialog, then
+    /// installs it automatically into the selected game directory — no manual wizard steps. The
+    /// installed instance is selected and a toast confirms completion.
     public static void installLatest() {
+        HMCLGameRepository repository = GameDirectoryManager.getSelectedRepository();
+
         Task<Path> download = Task.supplyAsync(NorthStarClientInstaller::fetchManifest)
                 .thenComposeAsync(NorthStarClientInstaller::downloadClient);
 
-        Task<Void> whole = download.whenComplete(Schedulers.javafx(),
-                path -> Controllers.getDecorator().startWizard(
-                        new ModpackInstallWizardProvider(GameDirectoryManager.getSelectedRepository(), path),
-                        i18n("install.modpack")),
-                exception -> {
-                    if (exception == null || exception instanceof CancellationException)
-                        return; // cancelled by the user
-                    if (findCause(exception, ClientUnavailableException.class) != null) {
-                        Controllers.showToast(i18n("northstar.no_client"));
-                    } else {
-                        LOG.warning("Failed to download NorthStar client", exception);
-                        Controllers.dialog(exception.toString(), i18n("message.error"));
-                    }
-                });
+        Task<GameInstanceID> whole = download
+                .thenComposeAsync(path -> installHeadless(repository, path));
+        // whenComplete 仅用于在 FX 线程收尾；whole 本身保持 GameInstanceID 类型交给任务对话框
+        whole.whenComplete(Schedulers.javafx(), (instanceId, exception) -> {
+            if (exception instanceof CancellationException)
+                return; // cancelled by the user
+            if (exception != null) {
+                if (findCause(exception, ClientUnavailableException.class) != null) {
+                    Controllers.showToast(i18n("northstar.no_client"));
+                } else {
+                    LOG.warning("Failed to download NorthStar client", exception);
+                    Controllers.dialog(exception.toString(), i18n("message.error"));
+                }
+                return;
+            }
+            if (instanceId != null) {
+                try {
+                    repository.setSelectedInstance(repository.getInstance(instanceId));
+                } catch (NoSuchGameInstanceException e) {
+                    LOG.warning("Installed instance disappeared right after installation", e);
+                }
+                Controllers.showToast(i18n("northstar.client.installed"));
+            }
+        });
 
         Controllers.taskDialog(whole, i18n("northstar.fetching_client"), TaskCancellationAction.NORMAL);
+    }
+
+    /// Parses the downloaded archive and builds the installation task for a new instance named
+    /// after the modpack manifest, all without UI. Runs the manifest parse on a background
+    /// thread because it decompresses the archive.
+    private static Task<GameInstanceID> installHeadless(HMCLGameRepository repository, Path modpackFile) {
+        return Task.supplyAsync(() -> {
+            Charset charset = CompressingUtils.findSuitableEncoding(modpackFile);
+            Modpack manifest = ModpackHelper.readModpackManifest(modpackFile, charset);
+            String name = manifest.getName().trim();
+            if (name.isEmpty() || !HMCLGameRepository.isValidInstanceId(name)) {
+                name = "NorthStar-Client";
+            }
+            return new ModpackPlan(manifest, name);
+        }).thenComposeAsync(plan -> {
+            GameInstanceID instanceId = new GameInstanceID(plan.name());
+            return ModpackHelper.getInstallTask(repository, modpackFile, instanceId, plan.manifest(), null)
+                    .thenApplyAsync(ignored -> instanceId);
+        });
+    }
+
+    /// The parsed manifest plus the resolved instance name.
+    private record ModpackPlan(Modpack manifest, String name) {
     }
 
     /// Requests the client manifest from the NorthStar server.
