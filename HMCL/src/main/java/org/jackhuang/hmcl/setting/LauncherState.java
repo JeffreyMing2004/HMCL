@@ -151,9 +151,10 @@ public final class LauncherState extends ObservableSetting implements JsonSchema
         this.y.set(y);
     }
 
-    /// The launcher window content width.
+    /// The launcher window content width. Defaults to 1280 so the main page layout
+    /// (sidebar + announcement card + server status) fits without overlapping.
     @SerializedName("width")
-    private final DoubleProperty width = new SimpleDoubleProperty();
+    private final DoubleProperty width = new SimpleDoubleProperty(1280.0);
 
     /// Returns the launcher window content width property.
     public DoubleProperty widthProperty() {
@@ -170,9 +171,9 @@ public final class LauncherState extends ObservableSetting implements JsonSchema
         this.width.set(width);
     }
 
-    /// The launcher window content height.
+    /// The launcher window content height. Defaults to 720.
     @SerializedName("height")
-    private final DoubleProperty height = new SimpleDoubleProperty();
+    private final DoubleProperty height = new SimpleDoubleProperty(720.0);
 
     /// Returns the launcher window content height property.
     public DoubleProperty heightProperty() {
