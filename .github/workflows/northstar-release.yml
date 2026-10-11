@@ -39,6 +39,20 @@ jobs:
             echo "$(cat "$f.sha256")  $f" | sha256sum -c
           done
 
+      - name: Generate launcher-update manifest
+        run: |
+          # 自更新清单:后端 /api/launcher/update 自动探测本文件(releases/latest/download)
+          JAR_SHA1=$(sha1sum "HMCL/build/libs/HMCL-$NORTHSTAR_VERSION.jar" | cut -d' ' -f1)
+          cat > launcher-update.json <<EOF
+          {
+            "version": "$NORTHSTAR_VERSION",
+            "jar": "https://github.com/JeffreyMing2004/HMCL/releases/download/v$NORTHSTAR_VERSION/HMCL-$NORTHSTAR_VERSION.jar",
+            "jarsha1": "$JAR_SHA1",
+            "force": false
+          }
+          EOF
+          cat launcher-update.json
+
       - name: Generate release note
         run: |
           cat > RELEASE_NOTE.md <<EOF
@@ -62,5 +76,6 @@ jobs:
             "HMCL/build/libs/HMCL-$NORTHSTAR_VERSION.jar.sha256" \
             "HMCL/build/libs/HMCL-$NORTHSTAR_VERSION.sh" \
             "HMCL/build/libs/HMCL-$NORTHSTAR_VERSION.sh.sha256" \
+            "launcher-update.json" \
             --title "NorthStar Client v$NORTHSTAR_VERSION" \
             --notes-file RELEASE_NOTE.md
