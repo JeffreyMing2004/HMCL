@@ -5,12 +5,15 @@
 
 ## 接口一览
 
-| 接口 | 反代目标 | 数据来源 |
+| 接口 | 启动器请求路径 | 数据来源 |
+
+> **路径说明**：新版启动器（v1.0.1+）直接请求 `/api/launcher/*`（OpenResty 的 `^~ /api/` 反代已覆盖，无需额外配置）；
+> 根路径（`/client` 等）是 v1.0.0 旧客户端的兼容地址，OpenResty 需保留对应 location，直至存量客户端全部更新。
 | --- | --- | --- |
-| `GET /announcement` | 后端 `/api/launcher/announcement` | 数据库，管理后台「公告管理」页维护 |
-| `GET /client` | 后端 `/api/launcher/client` | 环境变量 `LAUNCHER_CLIENT_*` |
-| `GET /update` | 后端 `/api/launcher/update` | 环境变量 `LAUNCHER_UPDATE_*` |
-| `GET /anticheat` | 后端 `/api/launcher/anticheat` | 数据库，管理后台「启动器」页维护 |
+| `GET /announcement` | `/api/launcher/announcement` | 数据库，管理后台「公告管理」页维护 |
+| `GET /client` | `/api/launcher/client` | 环境变量 `LAUNCHER_CLIENT_*` |
+| `GET /update` | `/api/launcher/update` | 环境变量 `LAUNCHER_UPDATE_*` |
+| `GET /anticheat` | `/api/launcher/anticheat` | 数据库，管理后台「启动器」页维护 |
 
 反代配置：northstar_frontend 仓库 `deploy/openresty/northstar.mingpixel.net.conf`
 （`/announcement` 与 `/update` 两个 location 为本次新增，`/client`、`/anticheat` 已有）。

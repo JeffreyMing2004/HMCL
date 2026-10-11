@@ -54,19 +54,22 @@ public final class Metadata {
 
     public static final String PUBLISH_URL = "https://hmcl.huangyuhui.net";
     public static final String DOWNLOAD_URL = PUBLISH_URL + "/download";
-    public static final String HMCL_UPDATE_URL = System.getProperty("hmcl.update_source.override", "https://northstar.mingpixel.net/update");
+
+    // NorthStar 服务端接口统一走 /api/launcher/*（OpenResty 反代到 Spring Boot）。
+    // 根路径（/update 等）是 v1.0.0 旧客户端的兼容地址，由 OpenResty 的根路径 location 提供。
+    public static final String HMCL_UPDATE_URL = System.getProperty("hmcl.update_source.override", "https://northstar.mingpixel.net/api/launcher/update");
 
     /// URL that serves the manifest of the latest downloadable NorthStar client modpack.
-    public static final String NORTHSTAR_CLIENT_URL = "https://northstar.mingpixel.net/client";
+    public static final String NORTHSTAR_CLIENT_URL = "https://northstar.mingpixel.net/api/launcher/client";
 
     /// URL that serves NorthStar server announcements. The API may not be deployed yet, in
     /// which case the launcher silently skips announcements.
-    public static final String NORTHSTAR_ANNOUNCEMENT_URL = "https://northstar.mingpixel.net/announcement";
+    public static final String NORTHSTAR_ANNOUNCEMENT_URL = "https://northstar.mingpixel.net/api/launcher/announcement";
 
     /// URL that serves the NorthStar anti-cheat manifest used to configure 次元反作弊
     /// (DimensionAntiCheat) before launching. The API may not be deployed yet, in which case
     /// the launcher launches without anti-cheat configuration.
-    public static final String NORTHSTAR_ANTICHEAT_URL = "https://northstar.mingpixel.net/anticheat";
+    public static final String NORTHSTAR_ANTICHEAT_URL = "https://northstar.mingpixel.net/api/launcher/anticheat";
 
     /// Address of the NorthStar Minecraft server that the main page one-click join button connects
     /// to. Written as `host` (vanilla default port 25565 applies) or `host:port`.

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>NorthStar 内容发布管理</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", sans-serif; margin: 0; background: #f0f2f5; color: #1f2329; }
+  header { background: #2f54eb; color: #fff; padding: 14px 24px; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header p { margin: 4px 0 0; font-size: 12px; opacity: .85; }
+  nav { display: flex; gap: 4px; background: #fff; padding: 0 24px; border-bottom: 1px solid #e5e6eb; }
+  nav button { border: none; background: none; padding: 12px 16px; font-size: 14px; cursor: pointer; color: #4e5969; border-bottom: 2px solid transparent; }
+  nav button.active { color: #2f54eb; border-bottom-color: #2f54eb; font-weight: 600; }
+  main { max-width: 860px; margin: 20px auto; padding: 0 16px 60px; }
+  section { display: none; background: #fff; border-radius: 8px; padding: 20px 24px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  section.active { display: block; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  button.op { padding: 7px 14px; border-radius: 6px; border: 1px solid #d0d3d9; background: #fff; cursor: pointer; font-size: 13px; }
+  button.op.primary { background: #2f54eb; border-color: #2f54eb; color: #fff; }
+  button.op.danger { color: #f53f3f; border-color: #f53f3f; }
+  button.op:disabled { opacity: .5; cursor: not-allowed; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; color: #4e5969; margin-bottom: 4px; }
+  .field input[type=text], .field textarea, .field select { width: 100%; padding: 8px 10px; border: 1px solid #d0d3d9; border-radius: 6px; font-size: 13px; font-family: inherit; }
+  .field textarea { min-height: 90px; resize: vertical; }
+  .field input[type=file] { font-size: 13px; }
+  .hint { font-size: 12px; color: #86909c; margin-top: 4px; }
+  .entry { border: 1px solid #e5e6eb; border-radius: 8px; padding: 14px; margin-bottom: 12px; background: #fafbfc; }
+  .entry .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .entry .head b { font-size: 14px; }
+  .preview { border: 1px dashed #c9cdd4; border-radius: 6px; padding: 10px; font-size: 13px; background: #fff; min-height: 20px; }
+  .preview a { color: #2f54eb; }
+  .status { font-size: 13px; margin-top: 12px; padding: 8px 12px; border-radius: 6px; display: none; }
+  .status.ok { display: block; background: #e8ffea; color: #00b42a; }
+  .status.err { display: block; background: #ffece8; color: #f53f3f; }
+  .row { display: flex; gap: 12px; }
+  .row .field { flex: 1; }
+  code.cmd { display: block; background: #1d2129; color: #a9dfbf; padding: 10px 12px; border-radius: 6px; font-size: 12px; margin-top: 6px; white-space: pre-wrap; word-break: break-all; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  h3 { font-size: 14px; margin: 16px 0 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>NorthStar 内容发布管理</h1>
+  <p>本地打开使用,编辑后下载 JSON 并上传到服务器站点根目录。校验规则与启动器解析器一致。</p>
+</header>
+<nav>
+  <button data-tab="announce" class="active">公告发布</button>
+  <button data-tab="client">整合包清单</button>
+  <button data-tab="update">自更新清单</button>
+  <button data-tab="anticheat">反作弊清单</button>
+  <button data-tab="help">发布流程</button>
+</nav>
+<main>
+
+<!-- ============ 公告 ============ -->
+<section id="tab-announce" class="active">
+  <h2>公告管理(announcement.json)</h2>
+  <div class="toolbar">
+    <button class="op" id="announce-open">📁 打开服务器上的 announcement.json</button>
+    <button class="op primary" id="announce-add">➕ 新增公告</button>
+    <button class="op primary" id="announce-download">⬇️ 下载 announcement.json</button>
+    <input type="file" id="announce-open-hidden" accept=".json" style="display:none">
+  </div>
+  <p class="hint">content 支持 &lt;a href="https://…"&gt;链接文字&lt;/a&gt; 标记;date 可选。启动器按列表顺序全部平铺展示。</p>
+  <div id="announce-list"></div>
+  <div class="status" id="announce-status"></div>
+</section>
+
+<!-- ============ 整合包 ============ -->
+<section id="tab-client">
+  <h2>整合包清单(client.json)</h2>
+  <div class="toolbar">
+    <button class="op" id="client-open">📁 打开服务器上的 client.json</button>
+    <button class="op primary" id="client-download">⬇️ 下载 client.json</button>
+    <input type="file" id="client-open-hidden" accept=".json" style="display:none">
+  </div>
+  <div class="field">
+    <label>版本号(仅记录用)</label>
+    <input type="text" id="client-version" placeholder="1.0.0">
+  </div>
+  <div class="field">
+    <label>整合包 zip 直链(必填)</label>
+    <input type="text" id="client-url" placeholder="https://northstar.mingpixel.net/download/northstar-client-1.0.0.zip">
+    <div class="hint">支持 HMCL / CurseForge / MultiMC / Modrinth 格式,启动器安装向导自动识别。</div>
+  </div>
+  <div class="field">
+    <label>SHA-1(可选,强烈建议:选择本地 zip 自动计算)</label>
+    <div class="row">
+      <input type="text" id="client-sha1" placeholder="40 位十六进制,留空则不校验">
+      <input type="file" id="client-file" style="flex:0 0 auto">
+    </div>
+  </div>
+  <div class="status" id="client-status"></div>
+</section>
+
+<!-- ============ 自更新 ============ -->
+<section id="tab-update">
+  <h2>自更新清单(update.json)</h2>
+  <div class="toolbar">
+    <button class="op" id="update-open">📁 打开服务器上的 update.json</button>
+    <button class="op primary" id="update-download">⬇️ 下载 update.json</button>
+    <input type="file" id="update-open-hidden" accept=".json" style="display:none">
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>最新版本号(与 tag 一致)</label>
+      <input type="text" id="update-version" placeholder="1.0.1">
+    </div>
+    <div class="field">
+      <label>强制更新</label>
+      <select id="update-force"><option value="false">false(可跳过)</option><option value="true">true(强制)</option></select>
+    </div>
+  </div>
+  <div class="field">
+    <label>新版本 jar 直链</label>
+    <input type="text" id="update-jar" placeholder="https://github.com/…/HMCL-1.0.1.jar 或自建镜像 https://northstar.mingpixel.net/download/HMCL-1.0.1.jar">
+    <div class="hint">国内玩家建议镜像到 northstar.mingpixel.net/download/ 并上传 jar。</div>
+  </div>
+  <div class="field">
+    <label>jar 的 SHA-1(必填,启动器据此校验;选择本地 jar 自动计算)</label>
+    <div class="row">
+      <input type="text" id="update-sha1" placeholder="40 位十六进制">
+      <input type="file" id="update-file" style="flex:0 0 auto">
+    </div>
+  </div>
+  <div class="status" id="update-status"></div>
+</section>
+
+<!-- ============ 反作弊 ============ -->
+<section id="tab-anticheat">
+  <h2>反作弊清单(anticheat.json)</h2>
+  <div class="toolbar">
+    <button class="op" id="anticheat-open">📁 打开服务器上的 anticheat.json</button>
+    <button class="op primary" id="anticheat-add">➕ 新增组件</button>
+    <button class="op primary" id="anticheat-download">⬇️ 下载 anticheat.json</button>
+    <input type="file" id="anticheat-open-hidden" accept=".json" style="display:none">
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>启用</label>
+      <select id="anticheat-enabled"><option value="true">true(启动前安装/校验)</option><option value="false">false(跳过)</option></select>
+    </div>
+    <div class="field">
+      <label>清单版本(改动清单时递增)</label>
+      <input type="text" id="anticheat-version" placeholder="1">
+    </div>
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>适用游戏版本(逗号分隔,留空 = 全部)</label>
+      <input type="text" id="anticheat-versions" placeholder="1.20.1">
+    </div>
+    <div class="field">
+      <label>Agent 文件名(files 中 target=MODS 的 jar)</label>
+      <input type="text" id="anticheat-agent" placeholder="DAC-agent.jar">
+    </div>
+  </div>
+  <div class="field">
+    <label>配套 JRE 目录(可选,解压到游戏目录的包名)</label>
+    <input type="text" id="anticheat-java" placeholder="dac-jre.zip">
+  </div>
+  <h3>组件文件列表</h3>
+  <div id="anticheat-list"></div>
+  <div class="status" id="anticheat-status"></div>
+</section>
+
+<!-- ============ 帮助 ============ -->
+<section id="tab-help">
+  <h2>发布流程</h2>
+  <p>1. 点击对应页签的「打开服务器上的 xxx.json」,选择上次从服务器下载(或仓库 server/ 目录)的文件。</p>
+  <p>2. 编辑内容,页面实时校验(必填项、SHA-1 格式、文件名安全、target 枚举),与启动器解析规则一致。</p>
+  <p>3. 点击「下载 xxx.json」,把得到的文件通过scp/SFTP上传到服务器站点根目录覆盖旧文件:</p>
+  <code class="cmd">scp announcement.json user@northstar.mingpixel.net 对应的站点根目录路径/</code>
+  <p>4. 浏览器访问对应接口确认生效,例如:</p>
+  <code class="cmd">curl -s "https://northstar.mingpixel.net/announcement"</code>
+  <h3>发新启动器版本</h3>
+  <p>git tag v1.0.1 并推送 → CI 自动发布 Release → 「自更新清单」页填入新版本号与 jar 直链(建议同时镜像 jar 到 /download/)→ 下载 update.json 上传覆盖。</p>
+  <h3>注意</h3>
+  <p>本页面请只在本地打开使用,不要部署到公网服务器——静态站没有鉴权,谁都能改你的接口内容。</p>
+</section>
+
+</main>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const SHA1_RE = /^[0-9a-f]{40}$/;
+
+/* ---------- tab switching ---------- */
+document.querySelectorAll("nav button").forEach(btn => btn.addEventListener("click", () => {
+  document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll("section").forEach(s => s.classList.remove("active"));
+  btn.classList.add("active");
+  $("tab-" + btn.dataset.tab).classList.add("active");
+}));
+
+/* ---------- shared helpers ---------- */
+function showStatus(id, ok, text) {
+  const el = $(id);
+  el.className = "status " + (ok ? "ok" : "err");
+  el.textContent = text;
+}
+function download(filename, obj) {
+  const blob = new Blob([JSON.stringify(obj, null, 2) + "\n"], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function openJson(inputId, cb) {
+  $(inputId).onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    file.text().then(text => {
+      try { cb(JSON.parse(text)); } catch (err) { alert("JSON 解析失败: " + err.message); }
+    });
+    e.target.value = "";
+  };
+  $(inputId).click();
+}
+async function sha1OfFile(inputId) {
+  const file = $(inputId).files[0];
+  if (!file) return null;
+  const buf = await file.arrayBuffer();
+  return [...new Uint8Array(await crypto.subtle.digest("SHA-1", buf))]
+    .map(b => b.toString(16).padStart(2, "0")).join("");
+}
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/* ---------- announcements ---------- */
+let announcements = [];
+
+function renderAnnouncements() {
+  const list = $("announce-list");
+  list.innerHTML = "";
+  announcements.forEach((item, index) => {
+    const entry = document.createElement("div");
+    entry.className = "entry";
+    entry.innerHTML = `
+      <div class="head"><b>公告 #${index + 1}</b><button class="op danger" data-del="${index}">删除</button></div>
+      <div class="field"><label>标题(必填)</label><input type="text" data-k="title" data-i="${index}" value="${escapeHtml(item.title || "")}"></div>
+      <div class="row">
+        <div class="field"><label>日期(可选)</label><input type="text" data-k="date" data-i="${index}" value="${escapeHtml(item.date || "")}" placeholder="2026-10-08"></div>
+      </div>
+      <div class="field"><label>正文(必填,支持 <a href="…">链接</a>)</label>
+        <textarea data-k="content" data-i="${index}">${escapeHtml(item.content || "")}</textarea></div>
+      <div class="field"><label>预览</label><div class="preview" data-preview="${index}"></div></div>`;
+    list.appendChild(entry);
+    const preview = entry.querySelector("[data-preview]");
+    const render = () => {
+      preview.innerHTML = escapeHtml(item.content || "").replace(
+        /&lt;a href=&quot;([^&]*)&quot;&gt;([\s\S]*?)&lt;\/a&gt;/g,
+        '<a href="$1" target="_blank" rel="noopener">$2</a>');
+    };
+    render();
+    entry.querySelectorAll("[data-k]").forEach(input => input.addEventListener("input", () => {
+      item[input.dataset.k] = input.value;
+      render();
+    }));
+    entry.querySelector("[data-del]").addEventListener("click", () => {
+      announcements.splice(index, 1);
+      renderAnnouncements();
+    });
+  });
+}
+
+$("announce-add").addEventListener("click", () => {
+  announcements.push({ title: "", content: "", date: new Date().toISOString().slice(0, 10) });
+  renderAnnouncements();
+});
+$("announce-download").addEventListener("click", () => {
+  const invalid = announcements.findIndex(a => !a.title?.trim() || !a.content?.trim());
+  if (invalid !== -1) {
+    showStatus("announce-status", false, `公告 #${invalid + 1} 的标题和正文都是必填项。`);
+    return;
+  }
+  const clean = announcements.map(a => {
+    const entry = { title: a.title.trim(), content: a.content.trim() };
+    if (a.date?.trim()) entry.date = a.date.trim();
+    return entry;
+  });
+  download("announcement.json", { announcements: clean });
+  showStatus("announce-status", true, "announcement.json 已生成,上传到服务器站点根目录即可生效。");
+});
+$("announce-open").addEventListener("click", () => openJson("announce-open-hidden", data => {
+  if (!data || !Array.isArray(data.announcements)) { alert("不是有效的公告清单(缺少 announcements 数组)。"); return; }
+  announcements = data.announcements;
+  renderAnnouncements();
+  showStatus("announce-status", true, `已加载 ${announcements.length} 条公告。`);
+}));
+
+/* ---------- client manifest ---------- */
+openJson("client-open-hidden", data => {
+  $("client-version").value = data.version || "";
+  $("client-url").value = data.url || "";
+  $("client-sha1").value = data.sha1 || "";
+});
+$("client-file").addEventListener("change", async () => {
+  const sha1 = await sha1OfFile("client-file");
+  if (sha1) { $("client-sha1").value = sha1; showStatus("client-status", true, "已计算 zip 的 SHA-1:" + sha1); }
+});
+$("client-download").addEventListener("click", () => {
+  const url = $("client-url").value.trim();
+  const sha1 = $("client-sha1").value.trim().toLowerCase();
+  if (!url) { showStatus("client-status", false, "整合包直链是必填项。"); return; }
+  if (sha1 && !SHA1_RE.test(sha1)) { showStatus("client-status", false, "SHA-1 必须是 40 位十六进制。"); return; }
+  const manifest = { version: $("client-version").value.trim(), url };
+  if (sha1) manifest.sha1 = sha1;
+  download("client.json", manifest);
+  showStatus("client-status", true, "client.json 已生成。记得把 zip 上传到 url 对应的位置。");
+});
+
+/* ---------- update manifest ---------- */
+openJson("update-open-hidden", data => {
+  $("update-version").value = data.version || "";
+  $("update-jar").value = data.jar || "";
+  $("update-sha1").value = data.jarsha1 || "";
+  $("update-force").value = String(!!data.force);
+});
+$("update-file").addEventListener("change", async () => {
+  const sha1 = await sha1OfFile("update-file");
+  if (sha1) { $("update-sha1").value = sha1; showStatus("update-status", true, "已计算 jar 的 SHA-1:" + sha1); }
+});
+$("update-download").addEventListener("click", () => {
+  const version = $("update-version").value.trim();
+  const jar = $("update-jar").value.trim();
+  const sha1 = $("update-sha1").value.trim().toLowerCase();
+  if (!version || !jar) { showStatus("update-status", false, "版本号和 jar 直链都是必填项。"); return; }
+  if (!SHA1_RE.test(sha1)) { showStatus("update-status", false, "jarsha1 必填且必须是 40 位十六进制(启动器强校验)。"); return; }
+  download("update.json", { version, jar, jarsha1: sha1, force: $("update-force").value === "true" });
+  showStatus("update-status", true, "update.json 已生成。上传覆盖后,存量客户端下次启动收到更新提示。");
+});
+
+/* ---------- anticheat manifest ---------- */
+let artifacts = [];
+
+openJson("anticheat-open-hidden", data => {
+  $("anticheat-enabled").value = String(data.enabled !== false);
+  $("anticheat-version").value = data.version || "";
+  $("anticheat-versions").value = (data.gameVersions || []).join(", ");
+  $("anticheat-agent").value = data.agentFile || "";
+  $("anticheat-java").value = data.javaDirectory || "";
+  artifacts = data.files || [];
+  renderArtifacts();
+});
+
+function renderArtifacts() {
+  const list = $("anticheat-list");
+  list.innerHTML = "";
+  artifacts.forEach((item, index) => {
+    const entry = document.createElement("div");
+    entry.className = "entry";
+    entry.innerHTML = `
+      <div class="head"><b>组件 #${index + 1}</b><button class="op danger" data-del="${index}">删除</button></div>
+      <div class="field"><label>下载直链(必填)</label><input type="text" data-k="url" value="${escapeHtml(item.url || "")}"></div>
+      <div class="row">
+        <div class="field"><label>文件名(必填,仅字母数字 . _ -)</label><input type="text" data-k="fileName" value="${escapeHtml(item.fileName || "")}"></div>
+        <div class="field"><label>安装位置</label><select data-k="target">
+          <option value="MODS">MODS(mods 目录)</option>
+          <option value="GAME">GAME(游戏根目录)</option></select></div>
+        <div class="field"><label>SHA-1(可选)</label><input type="text" data-k="sha1" value="${escapeHtml(item.sha1 || "")}"></div>
+      </div>`;
+    list.appendChild(entry);
+    entry.querySelector("[data-k=target]").value = item.target || "MODS";
+    entry.querySelectorAll("[data-k]").forEach(input => input.addEventListener("input", () => {
+      item[input.dataset.k] = input.value.trim();
+    }));
+    entry.querySelector("[data-del]").addEventListener("click", () => {
+      artifacts.splice(index, 1);
+      renderArtifacts();
+    });
+  });
+}
+
+$("anticheat-add").addEventListener("click", () => {
+  artifacts.push({ url: "", fileName: "", target: "MODS", sha1: "" });
+  renderArtifacts();
+});
+$("anticheat-download").addEventListener("click", () => {
+  const safeName = n => /^[A-Za-z0-9._-]+$/.test(n);
+  for (const [index, item] of artifacts.entries()) {
+    if (!item.url?.trim() || !safeName(item.fileName || "")) {
+      showStatus("anticheat-status", false, `组件 #${index + 1} 的直链必填,文件名只能是字母数字 . _ -(与启动器安全检查一致)。`);
+      return;
+    }
+    if (item.sha1 && !SHA1_RE.test(item.sha1.toLowerCase())) {
+      showStatus("anticheat-status", false, `组件 #${index + 1} 的 SHA-1 必须是 40 位十六进制。`);
+      return;
+    }
+  }
+  const manifest = { enabled: $("anticheat-enabled").value === "true" };
+  const versions = $("anticheat-versions").value.split(",").map(s => s.trim()).filter(Boolean);
+  if (versions.length) manifest.gameVersions = versions;
+  manifest.files = artifacts.map(item => {
+    const file = { url: item.url.trim(), fileName: item.fileName.trim(), target: item.target };
+    if (item.sha1) file.sha1 = item.sha1.toLowerCase();
+    return file;
+  });
+  if ($("anticheat-agent").value.trim()) manifest.agentFile = $("anticheat-agent").value.trim();
+  if ($("anticheat-java").value.trim()) manifest.javaDirectory = $("anticheat-java").value.trim();
+  if ($("anticheat-version").value.trim()) manifest.version = $("anticheat-version").value.trim();
+  download("anticheat.json", manifest);
+  showStatus("anticheat-status", true, "anticheat.json 已生成。上传覆盖后,玩家下次启动游戏前生效。");
+});
+</script>
+</body>
+</html>
