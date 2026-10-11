@@ -128,6 +128,8 @@ public final class NorthStarAnnouncements {
 
         VBox box = new VBox(card);
         box.setPadding(new Insets(15));
+        // 限制公告卡宽度,避免与右上角服务器状态卡重叠
+        card.setMaxWidth(480);
         return box;
     }
 
