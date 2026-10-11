@@ -133,7 +133,12 @@ public final class MainPage extends StackPane implements DecoratorPage {
         // NorthStar:公告从服务器 API 获取,接口未就绪时静默跳过;上游的预览版/开发版提示已移除
         announcementPane = new TransitionPane();
         NorthStarAnnouncements.loadAsync(card -> {
-            StackPane.setMargin(announcementPane, new Insets(-15));
+            // TransitionPane 默认填满整页且 Region 会拦截边界内点击,必须约束到
+            // 公告卡大小(480 + 内边距),否则会盖住开始游戏按钮/状态卡吞掉点击
+            StackPane.setAlignment(announcementPane, Pos.TOP_LEFT);
+            StackPane.setMargin(announcementPane, new Insets(0));
+            announcementPane.setMaxWidth(510);
+            announcementPane.setMaxHeight(Region.USE_PREF_SIZE);
             if (!getChildren().contains(announcementPane))
                 getChildren().add(announcementPane);
             announcementPane.setContent(card, ContainerAnimations.FADE);
@@ -329,6 +334,8 @@ public final class MainPage extends StackPane implements DecoratorPage {
     }
 
     private void launch() {
+        LOG.info("Launch button clicked, current instance: "
+                + Objects.toString(GameDirectoryManager.getSelectedRepository().getSelectedInstance(), "<none>"));
         HMCLGameRepository repository = GameDirectoryManager.getSelectedRepository();
         Instances.launch(repository.getSelectedInstance());
     }
@@ -337,6 +344,7 @@ public final class MainPage extends StackPane implements DecoratorPage {
     /// When no instance is selected, the latest release game is installed first. Warns once when
     /// the latest status query found the server offline.
     private void launchServer() {
+        LOG.info("Server join button clicked");
         if (Boolean.FALSE.equals(NorthStarServerStatus.isOnline())) {
             Controllers.showToast(i18n("northstar.server.status.offline.toast"));
         }
