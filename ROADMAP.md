@@ -25,9 +25,7 @@
 - ☐ **整合包接口** `GET /client`
   契约:`{"version":"…","url":"<zip 直链>","sha1":"(可选,建议提供)"}`;格式支持 HMCL/CurseForge/MultiMC/Modrinth。
   验收:侧边栏「下载」能走完安装向导并进游戏;zip 建议放对象存储/CDN,别占主站带宽。
-- ☐ **自更新接口** `GET /update?version=&channel=`
-  契约:`{"version":"…","jar":"<jar 直链>","jarsha1":"<小写 SHA-1>","force":false}`;`jar` 可直接指向 GitHub Release 资产。
-  验收:旧版启动器收到新版提示并完成自更新。
+- ☑ **自更新接口** `GET /update`(2026-10-13 上线):Spring Boot 自动探测 GitHub 最新 Release 的 `launcher-update.json`(CI 打 tag 自动生成,60s 缓存,失败回退最近结果);`LAUNCHER_UPDATE_*` 环境变量仅作手动覆盖;无清单时 404 静默跳过。
 - ☐ **反作弊清单接口** `GET /anticheat`
   契约:见客户端 `NorthStarAntiCheat`(SHA-1 + 下载地址 + Agent 配置,支持自动清理移除项)。
   验收:启动游戏前 DAC 组件自动安装/更新/清理。
@@ -36,7 +34,7 @@
 ## P1 发布工程收尾
 
 - ☐ **真实自更新闭环**:P0 的 `/update` 部署后发布 1.0.1,让存量 1.0.0 走一次真实「检测 → 下载 → SHA-1 校验 → 替换 → 重启」。
-- ◐ **force 强更演练**:本地 mock 服务器加 `--force`(`scripts/mock_update_server.py`)再走一遍,确认不可跳过的强制更新交互。
+- ☑ **真实自更新闭环**(2026-10-13):后端上线 + 自动探测返回 1.0.1,存量 1.0.0 客户端启动即收到更新提示,下载经 SHA-1 校验后自动替换重启。`force` 强更交互仍可选验(mock 加 `--force`)。
 - ☐ **变更日志自动化**:Release 说明目前只有校验和,补充自动生成的 changelog(上个 tag 到当前 tag 的 commit 列表)。
 - ☐ **分发渠道落地**:社区站点下载页(Release 链接 + SHA-256 公示)、玩家群公告模板;明确「只从 Release 页下载」,防钓鱼套壳。
 - ☐ **(可选)更新校验增强**:自更新沿用 SHA-1(接口契约),可另在下载页公示 SHA-256 供玩家人工核验。
