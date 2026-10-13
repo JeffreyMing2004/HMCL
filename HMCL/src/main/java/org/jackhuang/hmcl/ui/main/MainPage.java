@@ -59,6 +59,7 @@ import org.jackhuang.hmcl.ui.animation.AnimationUtils;
 import org.jackhuang.hmcl.ui.animation.ContainerAnimations;
 import org.jackhuang.hmcl.ui.animation.TransitionPane;
 import org.jackhuang.hmcl.ui.construct.MessageDialogPane;
+import org.jackhuang.hmcl.ui.download.NorthStarClientInstaller;
 import org.jackhuang.hmcl.ui.construct.TwoLineListItem;
 import org.jackhuang.hmcl.ui.decorator.DecoratorPage;
 import org.jackhuang.hmcl.ui.instances.GameListPopupMenu;
@@ -143,6 +144,9 @@ public final class MainPage extends StackPane implements DecoratorPage {
                 getChildren().add(announcementPane);
             announcementPane.setContent(card, ContainerAnimations.FADE);
         });
+
+        // NorthStar:检测到新版客户端整合包时提示一键更新(下载后自动替换旧版)
+        NorthStarClientInstaller.checkAndPromptUpdate();
 
         updatePane = new StackPane();
         updatePane.setVisible(false);
