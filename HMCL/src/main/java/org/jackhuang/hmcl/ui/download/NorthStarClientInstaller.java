@@ -23,6 +23,7 @@ import com.google.gson.JsonParseException;
 import org.jackhuang.hmcl.Metadata;
 import org.jackhuang.hmcl.game.HMCLGameRepository;
 import org.jackhuang.hmcl.game.GameInstanceID;
+import org.jackhuang.hmcl.game.LauncherHelper;
 import org.jackhuang.hmcl.game.ModpackHelper;
 import org.jackhuang.hmcl.game.NoSuchGameInstanceException;
 import org.jackhuang.hmcl.modpack.Modpack;
@@ -43,6 +44,8 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
@@ -54,7 +57,7 @@ import static org.jackhuang.hmcl.util.logging.Logger.LOG;
 /// 下载并自动安装 NorthStar 服务器客户端整合包。
 ///
 /// <p>流程:从 [Metadata.NORTHSTAR_CLIENT_URL] 拉取清单 → 下载 zip(可选 SHA-1 校验)→
-/// 无 UI 自动安装新实例 → 记录新版并删除旧客户端实例 → 选中新实例。安装完成后在
+/// 无 UI 自动安装新实例 → 复制并校验玩家数据 → 记录新版并删除旧客户端实例 → 选中新实例。安装完成后在
 /// {@code northstar-client/installed.json} 记录版本与实例 ID,供启动时检测更新。</p>
 ///
 /// <p>[checkAndPromptUpdate] 在主页加载时比对服务端清单与本地已装版本,发现新版本
@@ -64,7 +67,7 @@ public final class NorthStarClientInstaller {
     /// 整合包未提供合法名称时使用的实例名称。
     private static final String DEFAULT_INSTANCE_NAME = "NorthStar-Client";
 
-    /// 已安装客户端的版本记录:{version, instanceId}。
+    /// 已安装客户端的版本、实例标识和所属游戏目录记录。
     private static Path installedMarkerFile() {
         return Metadata.HMCL_LOCAL_HOME.resolve("northstar-client").resolve("installed.json");
     }
@@ -79,11 +82,15 @@ public final class NorthStarClientInstaller {
     /// Fetches the client manifest, downloads the modpack while showing a progress dialog, then
     /// installs it automatically into the selected game directory — no manual wizard steps. When
     /// a previous NorthStar client instance is recorded, it is retained until the new instance
-    /// has installed successfully and its version marker has been saved. The
+    /// has installed successfully, player data has been copied and verified, and its version marker has been saved. The
     /// installed instance is selected, the new version recorded, and a toast confirms completion.
     public static void installLatest() {
         HMCLGameRepository repository = GameDirectoryManager.getSelectedRepository();
-        @Nullable InstalledClient previous = readInstalledMarker();
+        @Nullable InstalledClient recorded = readInstalledMarker();
+        // Legacy markers have no directory; new records must match before copying or removing an instance.
+        @Nullable InstalledClient previous = recorded != null
+                && (recorded.repository() == null || recorded.repository().equals(repositoryPath(repository)))
+                ? recorded : null;
 
         Task<Path> download = Task.supplyAsync(NorthStarClientInstaller::fetchManifest)
                 .thenComposeAsync(NorthStarClientInstaller::downloadClient);
@@ -93,7 +100,8 @@ public final class NorthStarClientInstaller {
                 .thenApplyAsync(result -> {
                     // Only retire the old instance after installation and repository registration succeed.
                     repository.getInstance(result.instanceId());
-                    writeInstalledMarker(result.version(), result.instanceId());
+                    migratePlayerData(repository, previous, result.instanceId());
+                    writeInstalledMarker(repository, result.version(), result.instanceId());
                     removePreviousClient(repository, previous, result.instanceId());
                     return result;
                 });
@@ -120,6 +128,30 @@ public final class NorthStarClientInstaller {
         });
 
         Controllers.taskDialog(whole, i18n("northstar.fetching_client"), TaskCancellationAction.NORMAL);
+    }
+
+    /// Copies data from the recorded instance's effective run directory before any old files are removed.
+    /// A missing old instance is skipped; unreadable or partially missing instance directories abort cleanup.
+    private static void migratePlayerData(HMCLGameRepository repository,
+                                          @Nullable InstalledClient previous, GameInstanceID newId) throws IOException {
+        if (previous == null) {
+            return;
+        }
+        if (LauncherHelper.countMangedProcesses() > 0) {
+            throw new IOException("Please close the game before migrating NorthStar player data");
+        }
+        GameInstanceID oldId = new GameInstanceID(previous.instanceId());
+        if (!repository.hasInstance(oldId)) {
+            if (Files.notExists(repository.getLayout().getInstanceRoot(oldId))) {
+                return;
+            }
+            throw new IOException("Previous NorthStar instance cannot be loaded; preserving its data: " + oldId);
+        }
+        NorthStarPlayerDataMigration.migrate(repository.getInstance(oldId).getRunDirectory(),
+                repository.getInstance(newId).getRunDirectory());
+        if (Thread.currentThread().isInterrupted() || LauncherHelper.countMangedProcesses() > 0) {
+            throw new IOException("Player data migration interrupted or game started; preserving the old instance");
+        }
     }
 
     /// 启动时的更新检测:服务端清单版本与本地已装版本不一致时弹窗提示更新。
@@ -190,8 +222,8 @@ public final class NorthStarClientInstaller {
         }
     }
 
-    /// 已安装客户端的版本及实例标识。
-    private record InstalledClient(String version, String instanceId) {
+    /// 已安装客户端记录；旧版记录没有所属游戏目录。
+    private record InstalledClient(String version, String instanceId, @Nullable String repository) {
     }
 
     /// 已解析的整合包及计划实例名称。
@@ -202,13 +234,30 @@ public final class NorthStarClientInstaller {
     private record InstallResult(GameInstanceID instanceId, String version) {
     }
 
-    /// 写入新版记录；写入失败时终止更新收尾，保留旧实例。
-    private static void writeInstalledMarker(String version, GameInstanceID instanceId) throws IOException {
+    /// Returns the normalized game directory identity used to scope installed-client records.
+    private static String repositoryPath(HMCLGameRepository repository) {
+        return repository.getBaseDirectory().toAbsolutePath().normalize().toString();
+    }
+
+    /// 先写入临时文件再替换新版记录；写入失败时终止更新收尾，保留旧实例。
+    private static void writeInstalledMarker(HMCLGameRepository repository,
+                                              String version, GameInstanceID instanceId) throws IOException {
         Path file = installedMarkerFile();
         Files.createDirectories(file.getParent());
-        Files.writeString(file, JsonUtils.GSON.toJson(Map.of(
-                "version", version,
-                "instanceId", instanceId.toString())));
+        Path temporary = Files.createTempFile(file.getParent(), "installed-", ".json.tmp");
+        try {
+            Files.writeString(temporary, JsonUtils.GSON.toJson(Map.of(
+                    "version", version,
+                    "instanceId", instanceId.toString(),
+                    "repository", repositoryPath(repository))));
+            try {
+                Files.move(temporary, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
     }
 
     /// 读取已安装客户端的版本记录;缺失或损坏时返回 null(视为未安装)。
@@ -219,12 +268,12 @@ public final class NorthStarClientInstaller {
                 return null;
             }
             JsonObject json = JsonUtils.fromNonNullJson(Files.readString(file), JsonObject.class);
-            String version = stringField(json, "version");
-            String instanceId = stringField(json, "instanceId");
+            @Nullable String version = stringField(json, "version");
+            @Nullable String instanceId = stringField(json, "instanceId");
             if (version == null || instanceId == null) {
                 return null;
             }
-            return new InstalledClient(version, instanceId);
+            return new InstalledClient(version, instanceId, stringField(json, "repository"));
         } catch (IOException | JsonParseException e) {
             return null;
         }

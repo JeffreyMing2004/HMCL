@@ -26,6 +26,7 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableSet;
+import org.jackhuang.hmcl.Metadata;
 import org.jackhuang.hmcl.game.*;
 import org.jackhuang.hmcl.java.JavaManager;
 import org.jackhuang.hmcl.java.JavaRuntime;
@@ -707,9 +708,9 @@ public sealed abstract class GameSettings extends ObservableSetting {
     /// Property name for the quick play target type.
     public static final String PROPERTY_QUICK_PLAY = "quickPlay";
 
-    /// The quick play target type.
+    /// The quick play target type; defaults to joining the NorthStar multiplayer server.
     @SerializedName(PROPERTY_QUICK_PLAY)
-    private final InheritableProperty<QuickPlayType> quickPlay = newInheritableProperty(PROPERTY_QUICK_PLAY, QuickPlayType.NONE);
+    private final InheritableProperty<QuickPlayType> quickPlay = newInheritableProperty(PROPERTY_QUICK_PLAY, QuickPlayType.MULTIPLAYER);
 
     /// Returns the quick play target type property.
     public InheritableProperty<QuickPlayType> quickPlayProperty() {
@@ -719,9 +720,9 @@ public sealed abstract class GameSettings extends ObservableSetting {
     /// Property name for the multiplayer quick play target.
     public static final String PROPERTY_QUICK_PLAY_MULTIPLAYER = "quickPlayMultiplayer";
 
-    /// The server address for multiplayer quick play.
+    /// The server address for multiplayer quick play; defaults to the NorthStar server address.
     @SerializedName(PROPERTY_QUICK_PLAY_MULTIPLAYER)
-    private final InheritableProperty<String> quickPlayMultiplayer = newInheritableProperty(PROPERTY_QUICK_PLAY_MULTIPLAYER, "");
+    private final InheritableProperty<String> quickPlayMultiplayer = newInheritableProperty(PROPERTY_QUICK_PLAY_MULTIPLAYER, Metadata.NORTHSTAR_SERVER_ADDRESS);
 
     /// Returns the multiplayer quick play target property.
     public InheritableProperty<String> quickPlayMultiplayerProperty() {
