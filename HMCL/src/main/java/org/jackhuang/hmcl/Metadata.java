@@ -45,8 +45,14 @@ public final class Metadata {
     /// Explicit Application User Model ID used for Windows taskbar grouping and pinning.
     public static final String WINDOWS_APP_USER_MODEL_ID = "org.jackhuang.hmcl";
 
-    public static final String TITLE = NAME + " " + VERSION + " (HMCL " + HMCL_VERSION + ")";
-    public static final String FULL_TITLE = FULL_NAME + " v" + VERSION + " (HMCL " + HMCL_VERSION + ")";
+    /// User-facing NorthStar version followed by its upstream HMCL version.
+    public static final String DISPLAY_VERSION = VERSION + "（HMCL " + HMCL_VERSION + "）";
+
+    /// Launcher title shared by the window and startup log.
+    public static final String TITLE = NAME + " " + DISPLAY_VERSION;
+
+    /// Homepage title using the same brand and version format as the window.
+    public static final String FULL_TITLE = TITLE;
 
     public static final int MINIMUM_REQUIRED_JAVA_VERSION = 17;
     public static final int MINIMUM_SUPPORTED_JAVA_VERSION = 17;

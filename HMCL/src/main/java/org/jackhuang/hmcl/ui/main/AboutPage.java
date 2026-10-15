@@ -56,8 +56,8 @@ public final class AboutPage extends SpinnerPane {
             var launcher = LineButton.createExternalLinkButton("https://github.com/JeffreyMing2004/HMCL");
             launcher.setLargeTitle(true);
             launcher.setLeading(FXUtils.newBuiltinImage("/assets/img/icon.png"));
-            launcher.setTitle("NorthStar Client");
-            launcher.setSubtitle(Metadata.VERSION);
+            launcher.setTitle(Metadata.NAME);
+            launcher.setSubtitle(Metadata.DISPLAY_VERSION);
 
             var author = LineButton.createExternalLinkButton("https://space.bilibili.com/1445341");
             author.setLargeTitle(true);
