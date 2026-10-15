@@ -58,6 +58,12 @@ jobs:
           cat > RELEASE_NOTE.md <<EOF
           NorthStar Client v$NORTHSTAR_VERSION(稳定版,基于 HMCL 3.17)
 
+          EOF
+          if [ -f "docs/releases/$NORTHSTAR_VERSION.md" ]; then
+            cat "docs/releases/$NORTHSTAR_VERSION.md" >> RELEASE_NOTE.md
+          fi
+          cat >> RELEASE_NOTE.md <<EOF
+
           | 文件 | SHA-256 校验码 |
           | :--- | :--- |
           | HMCL-$NORTHSTAR_VERSION.exe | \`$(cat HMCL/build/libs/HMCL-$NORTHSTAR_VERSION.exe.sha256)\` |

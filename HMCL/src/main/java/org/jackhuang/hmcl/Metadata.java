@@ -78,7 +78,8 @@ public final class Metadata {
 
     public static final String DOCS_URL = "https://docs.hmcl.net";
     public static final String CONTACT_URL = DOCS_URL + "/help.html";
-    public static final String CHANGELOG_URL = DOCS_URL + "/changelog/";
+    /// GitHub Releases page containing NorthStar release notes.
+    public static final String CHANGELOG_URL = "https://github.com/JeffreyMing2004/HMCL/releases";
     public static final String EULA_URL = DOCS_URL + "/eula/hmcl.html";
     public static final String GROUPS_URL = "https://www.bilibili.com/opus/905435541874409529";
 
