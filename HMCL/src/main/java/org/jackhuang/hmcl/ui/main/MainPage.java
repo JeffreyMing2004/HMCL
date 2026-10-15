@@ -140,6 +140,8 @@ public final class MainPage extends StackPane implements DecoratorPage {
             StackPane.setMargin(announcementPane, new Insets(0));
             announcementPane.setMaxWidth(510);
             announcementPane.setMaxHeight(Region.USE_PREF_SIZE);
+            announcementPane.visibleProperty().bind(card.visibleProperty());
+            announcementPane.managedProperty().bind(card.managedProperty());
             if (!getChildren().contains(announcementPane))
                 getChildren().add(announcementPane);
             announcementPane.setContent(card, ContainerAnimations.FADE);

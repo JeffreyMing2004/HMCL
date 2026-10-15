@@ -248,6 +248,15 @@ public final class LauncherSettings extends ObservableSetting implements JsonSch
         return northstarMusicVolume;
     }
 
+    /// Content fingerprints of dismissed NorthStar announcements, oldest first.
+    @SerializedName("northstarDismissedAnnouncements")
+    private final ObservableList<String> northstarDismissedAnnouncements = FXCollections.observableArrayList();
+
+    /// Returns the mutable dismissal history persisted with the launcher settings.
+    public ObservableList<String> getNorthstarDismissedAnnouncements() {
+        return northstarDismissedAnnouncements;
+    }
+
     /// The common Minecraft directory selection mode.
     @SerializedName("commonDirectoryType")
     private final ObjectProperty<EnumCommonDirectory> commonDirectoryType = new RawPreservingObjectProperty<>(EnumCommonDirectory.DEFAULT);
