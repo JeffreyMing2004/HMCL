@@ -54,13 +54,14 @@ import static org.jackhuang.hmcl.util.logging.Logger.LOG;
 /// 下载并自动安装 NorthStar 服务器客户端整合包。
 ///
 /// <p>流程:从 [Metadata.NORTHSTAR_CLIENT_URL] 拉取清单 → 下载 zip(可选 SHA-1 校验)→
-/// 删除已记录的旧客户端实例 → 无 UI 自动安装新实例 → 选中新实例。安装完成后在
+/// 无 UI 自动安装新实例 → 记录新版并删除旧客户端实例 → 选中新实例。安装完成后在
 /// {@code northstar-client/installed.json} 记录版本与实例 ID,供启动时检测更新。</p>
 ///
 /// <p>[checkAndPromptUpdate] 在主页加载时比对服务端清单与本地已装版本,发现新版本
  /// 弹窗提示一键更新。</p>
 @NotNullByDefault
 public final class NorthStarClientInstaller {
+    /// 整合包未提供合法名称时使用的实例名称。
     private static final String DEFAULT_INSTANCE_NAME = "NorthStar-Client";
 
     /// 已安装客户端的版本记录:{version, instanceId}。
@@ -71,24 +72,30 @@ public final class NorthStarClientInstaller {
     /// 避免同一会话内重复弹更新提示。
     private static final AtomicBoolean UPDATE_PROMPT_SHOWN = new AtomicBoolean(false);
 
+    /// 禁止实例化静态安装工具。
     private NorthStarClientInstaller() {
     }
 
     /// Fetches the client manifest, downloads the modpack while showing a progress dialog, then
     /// installs it automatically into the selected game directory — no manual wizard steps. When
-    /// a previous NorthStar client instance is recorded, it is removed as soon as the new package
-    /// has been downloaded and verified (the old install is no longer needed at that point). The
+    /// a previous NorthStar client instance is recorded, it is retained until the new instance
+    /// has installed successfully and its version marker has been saved. The
     /// installed instance is selected, the new version recorded, and a toast confirms completion.
     public static void installLatest() {
         HMCLGameRepository repository = GameDirectoryManager.getSelectedRepository();
+        @Nullable InstalledClient previous = readInstalledMarker();
 
         Task<Path> download = Task.supplyAsync(NorthStarClientInstaller::fetchManifest)
                 .thenComposeAsync(NorthStarClientInstaller::downloadClient);
 
         Task<InstallResult> whole = download
-                .thenComposeAsync(path -> {
-                    removePreviousClient(repository);
-                    return installHeadless(repository, path);
+                .thenComposeAsync(path -> installHeadless(repository, path))
+                .thenApplyAsync(result -> {
+                    // Only retire the old instance after installation and repository registration succeed.
+                    repository.getInstance(result.instanceId());
+                    writeInstalledMarker(result.version(), result.instanceId());
+                    removePreviousClient(repository, previous, result.instanceId());
+                    return result;
                 });
         whole.whenComplete(Schedulers.javafx(), (result, exception) -> {
             if (exception instanceof CancellationException)
@@ -103,7 +110,6 @@ public final class NorthStarClientInstaller {
                 return;
             }
             if (result != null) {
-                Schedulers.io().execute(() -> writeInstalledMarker(result.version(), result.instanceId()));
                 try {
                     repository.setSelectedInstance(repository.getInstance(result.instanceId()));
                 } catch (NoSuchGameInstanceException e) {
@@ -146,7 +152,7 @@ public final class NorthStarClientInstaller {
     }
 
     /// 解析下载好的压缩包并构建无 UI 安装任务;实例名取自整合包清单,
-    /// 非法时回退到 NorthStar-Client。
+    /// 非法时回退到 NorthStar-Client。同名目录存在时添加数字后缀，保留旧实例直到安装成功。
     private static Task<InstallResult> installHeadless(HMCLGameRepository repository, Path modpackFile) {
         return Task.supplyAsync(() -> {
             Charset charset = CompressingUtils.findSuitableEncoding(modpackFile);
@@ -158,15 +164,20 @@ public final class NorthStarClientInstaller {
             return new ModpackPlan(manifest, name, manifest.getVersion());
         }).thenComposeAsync(plan -> {
             GameInstanceID instanceId = new GameInstanceID(plan.name());
-            return ModpackHelper.getInstallTask(repository, modpackFile, instanceId, plan.manifest(), null)
-                    .thenApplyAsync(ignored -> new InstallResult(instanceId, plan.modpackVersion()));
+            int suffix = 1;
+            while (Files.exists(repository.getLayout().getInstanceRoot(instanceId))) {
+                instanceId = new GameInstanceID(plan.name() + "-" + suffix++);
+            }
+            GameInstanceID targetId = instanceId;
+            return ModpackHelper.getInstallTask(repository, modpackFile, targetId, plan.manifest(), null)
+                    .thenApplyAsync(ignored -> new InstallResult(targetId, plan.modpackVersion()));
         });
     }
 
-    /// 删除上一版 NorthStar 客户端实例(记录在 installed.json 中)。
-    private static void removePreviousClient(HMCLGameRepository repository) {
-        InstalledClient installed = readInstalledMarker();
-        if (installed == null) {
+    /// 删除安装开始时记录的旧实例，始终保留刚安装完成的新实例。
+    private static void removePreviousClient(HMCLGameRepository repository,
+                                             @Nullable InstalledClient installed, GameInstanceID newId) {
+        if (installed == null || installed.instanceId().equals(newId.toString())) {
             return;
         }
         try {
@@ -179,26 +190,25 @@ public final class NorthStarClientInstaller {
         }
     }
 
+    /// 已安装客户端的版本及实例标识。
     private record InstalledClient(String version, String instanceId) {
     }
 
+    /// 已解析的整合包及计划实例名称。
     private record ModpackPlan(Modpack manifest, String name, String modpackVersion) {
     }
 
+    /// 完整安装成功后的实例及整合包版本。
     private record InstallResult(GameInstanceID instanceId, String version) {
     }
 
-    /// 写入已安装客户端的版本记录(后台线程调用)。
-    private static void writeInstalledMarker(String version, GameInstanceID instanceId) {
-        try {
-            Path file = installedMarkerFile();
-            Files.createDirectories(file.getParent());
-            Files.writeString(file, JsonUtils.GSON.toJson(Map.of(
-                    "version", version,
-                    "instanceId", instanceId.toString())));
-        } catch (IOException e) {
-            LOG.warning("Failed to write installed client marker", e);
-        }
+    /// 写入新版记录；写入失败时终止更新收尾，保留旧实例。
+    private static void writeInstalledMarker(String version, GameInstanceID instanceId) throws IOException {
+        Path file = installedMarkerFile();
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, JsonUtils.GSON.toJson(Map.of(
+                "version", version,
+                "instanceId", instanceId.toString())));
     }
 
     /// 读取已安装客户端的版本记录;缺失或损坏时返回 null(视为未安装)。
